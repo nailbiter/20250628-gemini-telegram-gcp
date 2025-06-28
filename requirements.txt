@@ -1,4 +1,4 @@
-Flask
+Flask[async]
 gunicorn
 uvicorn
 python-telegram-bot
