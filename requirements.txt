@@ -1,6 +1,7 @@
-Flask[async]
+#Flask[async]
 gunicorn
 uvicorn
 python-telegram-bot
 google-generativeai
-a2wsgi
+#a2wsgi
+fastapi
