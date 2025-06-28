@@ -4,6 +4,7 @@ import asyncio
 from flask import Flask, request
 import telegram
 import google.generativeai as genai
+from a2wsgi import WSGIMiddleware  # <--- Import the translator
 
 # --- Configuration ---
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -14,7 +15,11 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-app = Flask(__name__)
+# Initialize the core Flask app
+flask_app = Flask(__name__)
+
+# This is the app Gunicorn will talk to now. It wraps the Flask app for ASGI compatibility.
+app = WSGIMiddleware(flask_app)  # <--- Wrap the app here
 
 bot = None
 if TELEGRAM_BOT_TOKEN:

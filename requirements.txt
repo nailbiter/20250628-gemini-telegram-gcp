@@ -3,3 +3,4 @@ gunicorn
 uvicorn
 python-telegram-bot
 google-generativeai
+a2wsgi
