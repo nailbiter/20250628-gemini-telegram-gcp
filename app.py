@@ -26,7 +26,7 @@ bot = None
 if TELEGRAM_BOT_TOKEN:
     # Initialize the Bot with a higher connection pool size for async
     request_handler = HTTPXRequest(
-        http_version="1.1", connection_pool_size=10  # Increase pool size from default
+        http_version="1.1", connection_pool_size=20  # Increase pool size from default
     )
     bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN, request=request_handler)
     bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN)
