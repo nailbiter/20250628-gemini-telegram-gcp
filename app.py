@@ -63,6 +63,10 @@ async def telegram_webhook(request: Request):
         return "OK"
 
     chat_id = update.message.chat.id
+    logging.info(f"chat_id={chat_id}")
+    should_be_chat_id = os.environ.get("SHOULD_BE_CHAT_ID")
+    logging.info(f"should be chat_id={should_be_chat_id}")
+    assert should_be_chat_id is None or should_be_chat_id == chat_id
     user_text = update.message.text
     logging.info(f"Received message from chat_id {chat_id}: '{user_text}'")
 
