@@ -28,4 +28,4 @@ USER appuser
 ENV PORT 8080
 
 # Command to run the Gunicorn web server, which is a production-ready server for Flask
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "app:app"]
+CMD ["gunicorn","-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "--workers", "1", "app:app"]

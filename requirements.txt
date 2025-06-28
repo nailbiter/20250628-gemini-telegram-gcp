@@ -1,4 +1,5 @@
 Flask
 gunicorn
+uvicorn
 python-telegram-bot
 google-generativeai
