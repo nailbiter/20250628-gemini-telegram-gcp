@@ -42,7 +42,7 @@ else:
 
 
 # --- Webhook Endpoint (Now Asynchronous) ---
-@app.route("/", methods=["POST"])
+@flask_app.route("/", methods=["POST"])
 async def telegram_webhook():  # <--- Changed to `async def`
     """
     This function handles incoming updates from the Telegram webhook asynchronously.
