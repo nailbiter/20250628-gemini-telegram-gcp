@@ -47,6 +47,7 @@ async def telegram_webhook(request: Request) -> str:
     """
     This function handles incoming updates from the Telegram webhook.
     """
+    logging.info(f"request: {request}")
     if not bot or not gemini_model:
         logging.error("Service is not configured correctly. Missing API keys.")
         return Response(content="Service not configured", status_code=500)

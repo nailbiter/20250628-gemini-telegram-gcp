@@ -1,11 +1,12 @@
-.PHONY: deploy build
+.PHONY: deploy push build
 
-DOCKER_IMAGE_VERSION = v13
+DOCKER_IMAGE_VERSION = v14
 
 build:
 	docker build -t 20250628-gemini-telegram-gcp:$(DOCKER_IMAGE_VERSION) .
-deploy:
+push:
 	docker push 20250628-gemini-telegram-gcp:$(DOCKER_IMAGE_VERSION)
+deploy:
 	gcloud run deploy gemini-telegram-gcp \
 	--image=nailbiter/20250628-gemini-telegram-gcp:$(DOCKER_IMAGE_VERSION) \
 	--set-env-vars=$SET_ENV_VARS \
