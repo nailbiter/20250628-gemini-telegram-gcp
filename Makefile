@@ -1,6 +1,6 @@
 .PHONY: deploy push build
 
-DOCKER_IMAGE_VERSION = v14
+DOCKER_IMAGE_VERSION = v15
 DOCKER_USER = nailbiter
 DOCKER_IMAGE = 20250628-gemini-telegram-gcp
 
@@ -10,9 +10,9 @@ push:
 	docker push $(DOCKER_USER)/$(DOCKER_IMAGE):$(DOCKER_IMAGE_VERSION)
 deploy:
 	gcloud run deploy gemini-telegram-gcp \
-	--image=nailbiter/20250628-gemini-telegram-gcp:$(DOCKER_IMAGE_VERSION) \
-	--set-env-vars=$SET_ENV_VARS \
+	--image=nailbiter/$(DOCKER_IMAGE):$(DOCKER_IMAGE_VERSION) \
+	--set-env-vars=$(SET_ENV_VARS) \
 	--set-secrets=TELEGRAM_BOT_TOKEN=20250628-telegram-token-alex-gemini-bot:latest,GEMINI_API_KEY=20250628-gemini-key:latest \
 	--region=us-central1 \
-	--project=$GCLOUD_PROJECT_ID 
+	--project=$(GCLOUD_PROJECT_ID)
 	gcloud run services update-traffic gemini-telegram-gcp --to-latest

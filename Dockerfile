@@ -17,6 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the application code into the container
 COPY app.py ./
+COPY _common.py ./
 
 # Change ownership of the app directory to the non-root user
 RUN chown -R appuser:appuser /app
