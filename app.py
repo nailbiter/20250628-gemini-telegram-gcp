@@ -43,7 +43,7 @@ else:
 
 # --- Webhook Endpoint ---
 @app.post("/")
-async def telegram_webhook(request: Request):
+async def telegram_webhook(request: Request) -> str:
     """
     This function handles incoming updates from the Telegram webhook.
     """
