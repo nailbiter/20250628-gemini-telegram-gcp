@@ -1,6 +1,6 @@
 .PHONY: deploy push build secrets
 
-DOCKER_IMAGE_VERSION = v15
+DOCKER_IMAGE_VERSION = v16
 DOCKER_USER = nailbiter
 DOCKER_IMAGE = 20250628-gemini-telegram-gcp
 

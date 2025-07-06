@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#!venv/bin/python
+##!/usr/bin/env python3
 """===============================================================================
 
         FILE: /Users/nailbiter/Documents/forgithub/20250628-gemini-telegram-gcp/send-keyboard.py
