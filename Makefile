@@ -1,12 +1,13 @@
 .PHONY: deploy push build
 
 DOCKER_IMAGE_VERSION = v14
-DOCKER_USER=nailbiter
+DOCKER_USER = nailbiter
+DOCKER_IMAGE = 20250628-gemini-telegram-gcp
 
 build:
-	docker build -t 20250628-gemini-telegram-gcp:$(DOCKER_IMAGE_VERSION) .
+	docker build -t $(DOCKER_USER)/$(DOCKER_IMAGE):$(DOCKER_IMAGE_VERSION) .
 push:
-	docker push $(DOCKER_USER)/20250628-gemini-telegram-gcp:$(DOCKER_IMAGE_VERSION)
+	docker push $(DOCKER_USER)/$(DOCKER_IMAGE):$(DOCKER_IMAGE_VERSION)
 deploy:
 	gcloud run deploy gemini-telegram-gcp \
 	--image=nailbiter/20250628-gemini-telegram-gcp:$(DOCKER_IMAGE_VERSION) \
