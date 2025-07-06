@@ -1,4 +1,4 @@
-.PHONY: deploy push build
+.PHONY: deploy push build secrets
 
 DOCKER_IMAGE_VERSION = v15
 DOCKER_USER = nailbiter
@@ -16,3 +16,8 @@ deploy:
 	--region=us-central1 \
 	--project=$(GCLOUD_PROJECT_ID)
 	gcloud run services update-traffic gemini-telegram-gcp --to-latest
+secrets:
+	gcloud secrets add-iam-policy-binding 20250628-gemini-key \
+    --member=$(SERVICE_ACCOUNT) \
+    --role="roles/secretmanager.secretAccessor" \
+    --project=$(GCLOUD_PROJECT_ID)
