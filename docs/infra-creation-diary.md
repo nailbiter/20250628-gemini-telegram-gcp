@@ -57,3 +57,8 @@ gcloud projects add-iam-policy-binding api-project-424250507607 \
   --member="serviceAccount:424250507607-compute@developer.gserviceaccount.com" \
   --role="roles/cloudbuild.builds.builder"
 ```
+
+### build
+```
+gcloud builds submit --tag gcr.io/api-project-424250507607/py-assistant-bot
+```
