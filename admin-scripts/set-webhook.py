@@ -48,7 +48,7 @@ def set_webhook(service_name, secret_name, project_id):
         find_region_cmd = (
             f'gcloud run services list --project="{project_id}" '
             f'--filter="metadata.name={service_name}" '
-            f'''--format="value(metadata.labels.\\'cloud.googleapis.com/location\\')"'''
+            f'''--format="value(metadata.labels.'cloud.googleapis.com/location')"'''
         )
         region = run_command(find_region_cmd)
 
