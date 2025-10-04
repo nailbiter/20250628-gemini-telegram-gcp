@@ -28,21 +28,40 @@ from jinja2 import Template
 
 load_dotenv()
 
-"""
-    gcloud run deploy time-react-service \
+CMD = Template(
+    """
+    gcloud run deploy {{service_name}} \
   --image gcr.io/api-project-424250507607/py-assistant-bot \
   --service-account "pyassistantbot3-sa@api-project-424250507607.iam.gserviceaccount.com" \
-  --set-secrets="TELEGRAM_TOKEN=20250628-telegram-token-alex-gemini-bot:latest" \
-  --set-env-vars="CHAT_ID=[YOUR_CHAT_ID]" \
+  --set-secrets="TELEGRAM_TOKEN=20250628-telegram-token-alex-gemini-bot:latest,MONGO_URL=mongo-url-gaq:latest" \
+  --set-env-vars="CHAT_ID={{chat_id}}" \
   --region "us-east1" \
   --allow-unauthenticated \
   --command="gunicorn","--bind","0.0.0.0:8080","--workers","1","--threads","8","--timeout","0","time_react:app"
 """
+)
+
+
+def _render_cmd(*args, **kwargs) -> str:
+    return (
+        CMD.render(*args, **kwargs)
+        .replace("\\", " ")
+        .replace("\n", " ")
+        .replace("  ", " ")
+    )
 
 
 @click.command()
-def deploy_functions():
-    pass
+@click.option("-s", "--script", type=click.Path(), required=True)
+@click.option("-n", "--service-name", required=True)
+@click.option("-C", "--chat_id", required=True, type=int, envvar="CHAT_ID")
+def deploy_functions(script, chat_id, service_name):
+    cmd = _render_cmd(
+        script=script.removesuffix(".py"), chat_id=chat_id, service_name=service_name
+    )
+    logging.warning(f"> {cmd}")
+    ec, out = subprocess.getstatusoutput(cmd)
+    assert ec == 0, (cmd, ec, out)
 
 
 if __name__ == "__main__":
