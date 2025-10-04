@@ -25,6 +25,7 @@ import os
 from os import path
 import logging
 from jinja2 import Template
+import subprocess
 
 load_dotenv()
 
@@ -54,7 +55,9 @@ def _render_cmd(*args, **kwargs) -> str:
 @click.command()
 @click.option("-s", "--script", type=click.Path(), required=True)
 @click.option("-n", "--service-name", required=True)
-@click.option("-C", "--chat_id", required=True, type=int, envvar="CHAT_ID")
+@click.option(
+    "-C", "--chat_id", required=True, type=int, envvar="CHAT_ID", show_envvar=True
+)
 def deploy_functions(script, chat_id, service_name):
     cmd = _render_cmd(
         script=script.removesuffix(".py"), chat_id=chat_id, service_name=service_name
