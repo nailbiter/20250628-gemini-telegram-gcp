@@ -29,3 +29,10 @@ gcloud scheduler jobs create pubsub heartbeat-time-scheduler \
   --message-body="tick" \
   --location="us-east1"
 ```
+
+### granting access to secrets
+```
+gcloud secrets add-iam-policy-binding "20250628-telegram-token-alex-gemini-bot" \
+  --member="serviceAccount:pyassistantbot3-sa@[YOUR_PROJECT_ID].iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
