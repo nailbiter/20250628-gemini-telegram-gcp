@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # set_webhook.py
 import os
 import click
@@ -6,24 +8,36 @@ import subprocess
 import requests
 
 # Configure basic logging
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
 
 def run_command(cmd):
     """Helper function to run a command and return its output."""
-    logging.info(f'> {cmd}')
+    logging.info(f"> {cmd}")
     ec, out = subprocess.getstatusoutput(cmd)
     if ec != 0:
         logging.error(f"Command failed with exit code {ec}:\n{out}")
         raise RuntimeError(f"Command failed: {cmd}")
     return out.strip()
 
+
 @click.command()
-@click.option('--service-name', required=True, help='The name of the Cloud Run service.')
-@click.option('--secret-name', 
-              default='20250628-telegram-token-alex-gemini-bot', 
-              show_default=True, 
-              help='The name of the secret in Secret Manager holding the Telegram token.')
-@click.option('--project-id', required=True, envvar='GCLOUD_PROJECT', help='Your GCP project ID. Can be set via GCLOUD_PROJECT env var.')
+@click.option(
+    "-n", "--service-name", required=True, help="The name of the Cloud Run service."
+)
+@click.option(
+    "--secret-name",
+    default="20250628-telegram-token-alex-gemini-bot",
+    show_default=True,
+    help="The name of the secret in Secret Manager holding the Telegram token.",
+)
+@click.option(
+    "-P",
+    "--project-id",
+    required=True,
+    envvar="GCLOUD_PROJECT",
+    help="Your GCP project ID. Can be set via GCLOUD_PROJECT env var.",
+)
 def set_webhook(service_name, secret_name, project_id):
     """
     Finds a Cloud Run service, gets its URL and a secret from GCP, and sets the Telegram webhook.
@@ -34,15 +48,19 @@ def set_webhook(service_name, secret_name, project_id):
         find_region_cmd = (
             f'gcloud run services list --project="{project_id}" '
             f'--filter="metadata.name={service_name}" '
-            f'--format="value(metadata.labels.\\'cloud.googleapis.com/location\\')"'
+            f'''--format="value(metadata.labels.\\'cloud.googleapis.com/location\\')"'''
         )
         region = run_command(find_region_cmd)
 
         if not region:
-            logging.error(f"Could not find service '{service_name}' in project '{project_id}'. Please check the name.")
+            logging.error(
+                f"Could not find service '{service_name}' in project '{project_id}'. Please check the name."
+            )
             return
-        if '\n' in region:
-            logging.error(f"Found multiple services named '{service_name}' in different regions. Please specify the region manually.")
+        if "\n" in region:
+            logging.error(
+                f"Found multiple services named '{service_name}' in different regions. Please specify the region manually."
+            )
             return
         logging.info(f"Found service in region: {region}")
 
@@ -64,9 +82,9 @@ def set_webhook(service_name, secret_name, project_id):
         # 4. Set the webhook by calling the Telegram API
         logging.info("Setting Telegram webhook...")
         webhook_url = f"https://api.telegram.org/bot{token}/setWebhook"
-        response = requests.post(webhook_url, data={'url': service_url})
+        response = requests.post(webhook_url, data={"url": service_url})
         response.raise_for_status()
-        
+
         response_json = response.json()
         if response_json.get("ok"):
             logging.info("✅ Webhook was set successfully!")
@@ -79,5 +97,6 @@ def set_webhook(service_name, secret_name, project_id):
     except requests.exceptions.RequestException as e:
         logging.error(f"An error occurred while calling the Telegram API: {e}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     set_webhook()
