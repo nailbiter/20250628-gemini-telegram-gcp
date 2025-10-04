@@ -1,0 +1,64 @@
+## 2025-10-04
+
+### \#\# Step 1: Set Up the GCP Infrastructure
+
+First, we create the shared service account for the entire bot. **Note: You only need to run this first command once for the whole project.**
+
+**1. Create the Shared Service Account**
+This account will act as the identity for all your bot's Cloud Run services.
+
+```bash
+gcloud iam service-accounts create pyassistantbot3-sa \
+  --display-name="Shared Service Account for PyAssistantBot"
+```
+
+**2. Create a Pub/Sub Topic**
+This topic remains specific to the heartbeat service.
+
+```bash
+gcloud pubsub topics create heartbeat-time-topic
+```
+
+**3. Create the Cloud Scheduler Job**
+This job will publish a message to the topic every 30 minutes.
+
+```bash
+gcloud scheduler jobs create pubsub heartbeat-time-scheduler \
+  --schedule="*/30 * * * *" \
+  --topic="heartbeat-time-topic" \
+  --message-body="tick" \
+  --location="us-east1"
+```
+
+### granting access to secrets
+```
+gcloud secrets add-iam-policy-binding "20250628-telegram-token-alex-gemini-bot" \
+  --member="serviceAccount:pyassistantbot3-sa@[YOUR_PROJECT_ID].iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+### permissions
+#### give me permissions to build
+```
+gcloud projects add-iam-policy-binding api-project-424250507607 \
+  --member="user:alozz1991@gmail.com" \
+  --role="roles/cloudbuild.editor"
+```
+
+#### give GCE SA permissions to GCS
+```
+gcloud projects add-iam-policy-binding api-project-424250507607 \
+  --member="serviceAccount:424250507607@cloudbuild.gserviceaccount.com" \
+  --role="roles/cloudbuild.builds.builder"
+```
+
+```
+gcloud projects add-iam-policy-binding api-project-424250507607 \
+  --member="serviceAccount:424250507607-compute@developer.gserviceaccount.com" \
+  --role="roles/cloudbuild.builds.builder"
+```
+
+### build
+```
+gcloud builds submit --tag gcr.io/api-project-424250507607/py-assistant-bot
+```

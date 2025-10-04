@@ -1,0 +1,8 @@
+#Flask[async]
+gunicorn
+uvicorn
+python-telegram-bot
+google-generativeai
+#a2wsgi
+fastapi
+click
