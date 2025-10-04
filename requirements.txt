@@ -39,3 +39,4 @@ more_itertools
 gunicorn
 uvicorn
 fastapi
+Flask[async]
