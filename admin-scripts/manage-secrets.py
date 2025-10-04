@@ -32,8 +32,9 @@ from dotenv import load_dotenv
 from google.cloud import secretmanager
 from google.api_core import exceptions
 
+load_dotenv(".env.secrets")
+
 # Load environment variables from a .env file at script startup
-load_dotenv()
 
 
 @click.command(context_settings=dict(auto_envvar_prefix="SECRET_TOOL"))
