@@ -26,5 +26,6 @@ This job will publish a message to the topic every 30 minutes.
 gcloud scheduler jobs create pubsub heartbeat-time-scheduler \
   --schedule="*/30 * * * *" \
   --topic="heartbeat-time-topic" \
-  --message-body="tick"
+  --message-body="tick" \
+  --location="us-east1"
 ```
