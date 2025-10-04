@@ -36,3 +36,24 @@ gcloud secrets add-iam-policy-binding "20250628-telegram-token-alex-gemini-bot" 
   --member="serviceAccount:pyassistantbot3-sa@[YOUR_PROJECT_ID].iam.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 ```
+
+### permissions
+#### give me permissions to build
+```
+gcloud projects add-iam-policy-binding api-project-424250507607 \
+  --member="user:alozz1991@gmail.com" \
+  --role="roles/cloudbuild.editor"
+```
+
+#### give GCE SA permissions to GCS
+```
+gcloud projects add-iam-policy-binding api-project-424250507607 \
+  --member="serviceAccount:424250507607@cloudbuild.gserviceaccount.com" \
+  --role="roles/cloudbuild.builds.builder"
+```
+
+```
+gcloud projects add-iam-policy-binding api-project-424250507607 \
+  --member="serviceAccount:424250507607-compute@developer.gserviceaccount.com" \
+  --role="roles/cloudbuild.builds.builder"
+```

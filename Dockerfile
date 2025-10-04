@@ -2,6 +2,7 @@
 # Stage 1: The builder stage
 FROM python:3.9-slim as builder
 WORKDIR /usr/src/app
+RUN apt-get update && apt-get install -y git
 RUN pip install --upgrade pip
 COPY requirements.txt ./
 RUN pip wheel --no-cache-dir --wheel-dir /usr/src/app/wheels -r requirements.txt

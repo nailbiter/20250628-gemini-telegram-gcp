@@ -31,6 +31,7 @@ import click
 from dotenv import load_dotenv
 from google.cloud import secretmanager
 from google.api_core import exceptions
+import subprocess
 
 load_dotenv(".env.secrets")
 
@@ -42,15 +43,24 @@ load_dotenv(".env.secrets")
     "--project-id",
     required=True,
     help="Your GCP project ID. Can be set via SECRET_TOOL_PROJECT_ID.",
+    envvar="GCLOUD_PROJECT",
+    show_envvar=True,
 )
-@click.option("--secret-name", required=True, help="The name for your secret in GCP.")
+@click.option(
+    "--secret-name",
+    required=True,
+    help="The name for your secret in GCP.",
+    show_envvar=True,
+)
 @click.option(
     "--env-var",
     required=True,
+    show_envvar=True,
     help="The name of the environment variable holding the secret value.",
 )
 @click.option(
     "--service-account",
+    show_envvar=True,
     required=True,
     help="The service account to grant access to. Set via SECRET_TOOL_SERVICE_ACCOUNT.",
 )
@@ -58,7 +68,7 @@ def add(project_id, secret_name, env_var, service_account):
     """
     Creates/updates a secret and grants the default service account access.
     """
-    # Part 1: Read the secret value from the environment
+    # (Parts 1, 2, and 3 are unchanged)
     secret_value = os.getenv(env_var)
     if not secret_value:
         click.secho(
@@ -71,7 +81,6 @@ def add(project_id, secret_name, env_var, service_account):
     parent = f"projects/{project_id}"
     secret_path = f"{parent}/secrets/{secret_name}"
 
-    # Part 2: Create the secret container if it doesn't exist
     try:
         client.create_secret(
             request={
@@ -90,7 +99,6 @@ def add(project_id, secret_name, env_var, service_account):
         click.secho(f"❌ Error creating secret: {e}", fg="red")
         return
 
-    # Part 3: Add the new secret version
     try:
         payload = secret_value.encode("UTF-8")
         response = client.add_secret_version(
@@ -105,21 +113,40 @@ def add(project_id, secret_name, env_var, service_account):
         click.secho(f"❌ Error adding secret version: {e}", fg="red")
         return
 
-    # Part 4: Grant the service account access
+    # --- Part 4: Grant the service account access (CORRECTED LOGIC) ---
     try:
-        policy = client.get_iam_policy(request={"resource": secret_path})
-        role = "roles/secretmanager.secretAccessor"
-        binding = {"role": role, "members": [f"serviceAccount:{service_account}"]}
+        cmd = " ".join(
+            [
+                f'''gcloud secrets add-iam-policy-binding "{secret_name}"''',
+                f'''--member="serviceAccount:{service_account}"''',
+                '''--role="roles/secretmanager.secretAccessor"''',
+            ]
+        )
+        logging.warning(cmd)
+        ec, out = subprocess.getstatusoutput(cmd)
+        assert ec == 0, (cmd, ec, out)
 
-        if binding in policy.bindings:
-            click.secho(
-                f"ℹ️ Service account already has access to '{secret_name}'.",
-                fg="yellow",
-            )
-            return
+        # policy = client.get_iam_policy(request={"resource": secret_path})
 
-        policy.bindings.append(binding)
-        client.set_iam_policy(request={"resource": secret_path, "policy": policy})
+        # role = "roles/secretmanager.secretAccessor"
+        # member = f"serviceAccount:{service_account}"
+
+        # # Robustly check if the member already has the role
+        # binding_exists = any(
+        #     b.role == role and member in b.members for b in policy.bindings
+        # )
+
+        # if binding_exists:
+        #     click.secho(
+        #         f"ℹ️ Service account '{service_account}' already has access.",
+        #         fg="yellow",
+        #     )
+        #     return
+
+        # # Add the new binding to the policy
+        # policy.bindings.append({"role": role, "members": [member]})
+
+        # client.set_iam_policy(request={"resource": secret_path, "policy": policy})
         click.secho(
             f"✅ Granted access for '{service_account}' to secret '{secret_name}'.",
             fg="green",
