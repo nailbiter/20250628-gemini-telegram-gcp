@@ -35,3 +35,7 @@ urllib3==1.26.7
 ply
 json5
 more_itertools
+
+gunicorn
+uvicorn
+fastapi

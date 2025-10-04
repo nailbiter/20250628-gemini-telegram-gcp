@@ -62,3 +62,45 @@ gcloud projects add-iam-policy-binding api-project-424250507607 \
 ```
 gcloud builds submit --tag gcr.io/api-project-424250507607/py-assistant-bot
 ```
+
+
+### deploy
+
+```
+gcloud run deploy heartbeat-time-service \
+  --image gcr.io/api-project-424250507607/py-assistant-bot \
+  --service-account "pyassistantbot3-sa@api-project-424250507607.iam.gserviceaccount.com" \
+  --eventarc-trigger-service-account "pyassistantbot3-sa@api-project-424250507607.iam.gserviceaccount.com" \
+  --eventarc-trigger \
+  --eventarc-trigger-event "google.cloud.pubsub.topic.v1.messagePublished" \
+  --eventarc-trigger-event-filters "type=google.cloud.pubsub.topic.v1.messagePublished" \
+  --eventarc-trigger-event-filters "topic=heartbeat-time-topic" \
+  --set-secrets="TELEGRAM_TOKEN=20250628-telegram-token-alex-gemini-bot:latest,MONGO_URL=mongo-url-gaq:latest" \
+  --set-env-vars="CHAT_ID=[YOUR_CHAT_ID]" \
+  --region "us-east1" \
+  --allow-unauthenticated \
+  --command="gunicorn","--bind","0.0.0.0:8080","--workers","1","--threads","8","--timeout","0","heartbeat_time_main:app"
+```
+
+#### older way
+
+```
+	gcloud run deploy heartbeat-time-service \
+  --image gcr.io/api-project-424250507607/py-assistant-bot \
+  --service-account "pyassistantbot3-sa@api-project-424250507607.iam.gserviceaccount.com" \
+  --set-secrets="TELEGRAM_TOKEN=20250628-telegram-token-alex-gemini-bot:latest,MONGO_URL=mongo-url-gaq:latest" \
+  --set-env-vars="CHAT_ID=[YOUR_CHAT_ID]" \
+  --region "us-east1" \
+  --allow-unauthenticated \
+  --command="gunicorn","--bind","0.0.0.0:8080","--workers","1","--threads","8","--timeout","0","heartbeat_time_main:app"
+  ```
+  
+  ```
+  gcloud eventarc triggers create heartbeat-time-trigger \
+  --destination-run-service="heartbeat-time-service" \
+  --destination-run-region="us-east1" \
+  --location="us-east1" \
+  --event-filters="type=google.cloud.pubsub.topic.v1.messagePublished" \
+  --event-filters="topic=heartbeat-time-topic" \
+  --service-account="pyassistantbot3-sa@api-project-424250507607.iam.gserviceaccount.com"
+  ```
