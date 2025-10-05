@@ -41,7 +41,7 @@ CMD = Template(
   {% if command=='gunicorn' -%}
   --command="gunicorn","--bind","0.0.0.0:8080","--workers","1","--threads","8","--timeout","0","{{ script }}:app" \
   {% elif command=='uvicorn' -%}
-  --command="gunicorn","-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "--workers", "1", "{{ script }}:app" \
+  --command="gunicorn","-k","uvicorn.workers.UvicornWorker","--bind","0.0.0.0:8080","--workers","1","{{ script }}:app" \
   {% endif -%}
     --project {{project_id}}
 """
