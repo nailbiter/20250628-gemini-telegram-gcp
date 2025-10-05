@@ -6,9 +6,12 @@ from telegram import Bot
 from pymongo import MongoClient, UpdateOne
 import pandas as pd
 from croniter import croniter
-import pytz  # <-- CHANGED: Import pytz for timezone handling
+import pytz
 
 from common import MONGO_COLL_NAME, TimerContextManager
+
+# <-- CHANGED: Define your target timezone here. This is the only line you'll need to edit.
+TARGET_TIMEZONE = "America/New_York"
 
 
 class HabitsJob:
@@ -24,30 +27,43 @@ class HabitsJob:
         ]
 
     def run(self):
-        # <-- CHANGED: Get the current time as a timezone-aware UTC datetime
-        _now = datetime.now(pytz.utc)
-        self._logger.info(f"Habits job running at {_now.isoformat()}")
+        # <-- CHANGED: Define the target timezone object and UTC
+        target_tz = pytz.timezone(TARGET_TIMEZONE)
+        utc_tz = pytz.utc
+        _now_utc = datetime.now(utc_tz)
+        self._logger.info(f"Habits job running at {_now_utc.isoformat()}")
 
         habits_coll = self._mongo_client[MONGO_COLL_NAME]["alex.habits"]
         habits_df = pd.DataFrame(list(habits_coll.find({"enabled": True})))
         anchor_dates = self._get_anchor_dates()
 
         punches_to_create = []
-        # <-- CHANGED: Make the default base datetime timezone-aware (UTC)
-        default_base = datetime(2021, 12, 14, tzinfo=pytz.utc)
+        default_base_utc = datetime(2021, 12, 14, tzinfo=utc_tz)
 
         for habit in habits_df.to_dict(orient="records"):
-            # Anchor dates from Mongo are already UTC-aware
-            base = anchor_dates.get(habit["name"], default_base)
-            # croniter will now produce timezone-aware UTC datetimes
-            it = croniter(habit["cronline"], base)
-            while (due_date := it.get_next(datetime)) <= _now:
+            base_utc = anchor_dates.get(habit["name"], default_base_utc)
+
+            # <-- CHANGED: Convert UTC anchor to a naive datetime in your target timezone
+            base_target_naive = base_utc.astimezone(target_tz).replace(tzinfo=None)
+
+            # croniter now calculates based on your target timezone (e.g., EDT)
+            it = croniter(habit["cronline"], base_target_naive)
+
+            # <-- CHANGED: Loop condition also uses the target timezone
+            while (
+                due_date_target_naive := it.get_next(datetime)
+            ) <= _now_utc.astimezone(target_tz).replace(tzinfo=None):
+                # <-- CHANGED: Convert the naive target time back to absolute UTC for storage
+                due_date_utc = target_tz.localize(due_date_target_naive).astimezone(
+                    utc_tz
+                )
+
                 punches_to_create.append(
                     {
                         "name": habit["name"],
-                        "date": due_date,  # This is a UTC-aware datetime
-                        "due": due_date
-                        + timedelta(minutes=habit.get("delaymin", 0)),  # Also UTC-aware
+                        "date": due_date_utc,
+                        "due": due_date_utc
+                        + timedelta(minutes=habit.get("delaymin", 0)),
                         "onFailed": habit.get("onFailed"),
                         "info": habit.get("info"),
                     }
@@ -55,6 +71,7 @@ class HabitsJob:
 
         if punches_to_create:
             with TimerContextManager("bulk_write habits"):
+                # ... (bulk write logic is unchanged)
                 operations = [
                     UpdateOne(
                         {"name": p["name"], "date": p["date"]}, {"$set": p}, upsert=True
@@ -67,43 +84,37 @@ class HabitsJob:
                 # --- Send summary message to Telegram ---
                 summary_df = pd.DataFrame(punches_to_create)[["name", "due"]]
 
-                # <-- CHANGED: Convert UTC 'due' time to JST for display
-                jst_tz = pytz.timezone("Asia/Tokyo")
+                # <-- CHANGED: Convert UTC 'due' time to your target timezone for display
                 summary_df["due"] = (
                     pd.to_datetime(summary_df["due"])
-                    .dt.tz_convert(jst_tz)
+                    .dt.tz_convert(target_tz)
                     .dt.strftime("%Y-%m-%d %H:%M")
                 )
 
-                message = f"New habits generated (JST):\n```{summary_df.to_string(index=False)}```"
+                tz_name_for_display = TARGET_TIMEZONE.split("/")[-1].replace("_", " ")
+                message = f"New habits generated ({tz_name_for_display} Time):\n```{summary_df.to_string(index=False)}```"
                 self._send_message(message, parse_mode="Markdown")
 
-            # Update anchor dates with the current UTC time
-            self._update_anchor_dates(habits_df["name"].unique(), _now)
+            self._update_anchor_dates(habits_df["name"].unique(), _now_utc)
 
         with TimerContextManager("sanitize mongo"):
-            self._sanitize_mongo(_now)  # Pass the UTC-aware time
+            self._sanitize_mongo(_now_utc)
 
+    # ... (the rest of the class methods are unchanged) ...
     def _get_anchor_dates(self):
         anchor_coll = self._mongo_client[MONGO_COLL_NAME]["alex.habits_anchors"]
-        # pymongo > 3.10 automatically returns timezone-aware UTC datetimes
         return {r["name"]: r["date"] for r in anchor_coll.find()}
 
     def _update_anchor_dates(self, habit_names, anchor_date):
         anchor_coll = self._mongo_client[MONGO_COLL_NAME]["alex.habits_anchors"]
         operations = [
-            UpdateOne(
-                {"name": name},
-                {"$set": {"date": anchor_date}},  # anchor_date is already UTC-aware
-                upsert=True,
-            )
+            UpdateOne({"name": name}, {"$set": {"date": anchor_date}}, upsert=True)
             for name in habit_names
         ]
         if operations:
             anchor_coll.bulk_write(operations)
 
     def _sanitize_mongo(self, now_time):
-        # now_time is already a UTC-aware datetime, so the comparison is correct
         result = self._habits_punch_coll.update_many(
             {"due": {"$lt": now_time}, "status": {"$exists": False}},
             {"$set": {"status": "FAILED"}},
