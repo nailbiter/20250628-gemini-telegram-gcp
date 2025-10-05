@@ -38,6 +38,7 @@ class HabitsJob:
         anchor_dates = self._get_anchor_dates()
         punches_to_create = []
         default_base_utc = datetime(2021, 12, 14, tzinfo=pytz.utc)
+        utc_tz = pytz.utc
         for habit in habits_df.to_dict(orient="records"):
             base_utc = anchor_dates.get(habit["name"], default_base_utc)
             base_target_naive = base_utc.astimezone(target_tz).replace(tzinfo=None)
