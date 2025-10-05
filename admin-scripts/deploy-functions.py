@@ -27,7 +27,7 @@ import logging
 from jinja2 import Template
 import subprocess
 
-load_dotenv()
+load_dotenv(".env.secrets")
 
 CMD = Template(
     """
