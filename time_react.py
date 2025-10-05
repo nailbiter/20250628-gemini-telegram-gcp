@@ -3,6 +3,7 @@ import logging
 from fastapi import FastAPI, Request, Response
 import telegram
 from telegram.request import HTTPXRequest
+import typing
 
 # import google.generativeai as genai
 
@@ -43,18 +44,7 @@ else:
 gemini_model = 1
 
 
-# --- Webhook Endpoint ---
-@app.post("/")
-async def telegram_webhook(request: Request) -> str:
-    """
-    This function handles incoming updates from the Telegram webhook.
-    """
-    logging.info(f"request: {request}")
-
-    if not bot or not gemini_model:
-        logging.error("Service is not configured correctly. Missing API keys.")
-        return Response(content="Service not configured", status_code=500)
-
+async def time_react(request: Request, bot: telegram.Bot) -> typing.Any:
     try:
         update_json = await request.json()
         logging.info(f"request_json: {update_json}")
@@ -91,6 +81,21 @@ async def telegram_webhook(request: Request) -> str:
 
     # Always return a 200 OK to Telegram to acknowledge receipt of the update
     return "OK"
+
+
+# --- Webhook Endpoint ---
+@app.post("/")
+async def telegram_webhook(request: Request) -> str:
+    """
+    This function handles incoming updates from the Telegram webhook.
+    """
+    logging.info(f"request: {request}")
+
+    if not bot or not gemini_model:
+        logging.error("Service is not configured correctly. Missing API keys.")
+        return Response(content="Service not configured", status_code=500)
+    res = await time_react(request, bot)
+    return res
 
 
 # For local development: uvicorn app:app --reload --host 0.0.0.0 --port 8080
