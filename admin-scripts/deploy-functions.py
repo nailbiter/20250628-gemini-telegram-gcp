@@ -38,7 +38,11 @@ CMD = Template(
   --set-env-vars="CHAT_ID={{chat_id}}" \
   --region "us-east1" \
   --allow-unauthenticated \
-  --command="gunicorn","--bind","0.0.0.0:8080","--workers","1","--threads","8","--timeout","0","time_react:app" \
+  {% if command=='gunicorn' -%}
+  --command="gunicorn","--bind","0.0.0.0:8080","--workers","1","--threads","8","--timeout","0","{{ script }}:app" \
+  {% elif command=='uvicorn' -%}
+  --command="gunicorn","-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "--workers", "1", "{{ script }}:app" \
+  {% endif -%}
     --project {{project_id}}
 """
 )
@@ -57,15 +61,19 @@ def _render_cmd(*args, **kwargs) -> str:
 @click.option("-s", "--script", type=click.Path(), required=True)
 @click.option("-n", "--service-name", required=True)
 @click.option(
+    "-C", "--command", type=click.Choice(["gunicorn", "uvicorn"]), default="gunicorn"
+)
+@click.option(
     "-P", "--project-id", required=True, envvar="GCLOUD_PROJECT", show_envvar=True
 )
 @click.option(
     "-C", "--chat_id", required=True, type=int, envvar="CHAT_ID", show_envvar=True
 )
-def deploy_functions(script, chat_id, service_name, project_id):
+def deploy_functions(script, chat_id, service_name, project_id, command):
     cmd = _render_cmd(
         script=script.removesuffix(".py"),
         chat_id=chat_id,
+        command=command,
         service_name=service_name,
         project_id=project_id,
     )
