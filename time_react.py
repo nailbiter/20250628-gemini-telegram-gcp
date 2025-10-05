@@ -59,11 +59,15 @@ async def time_react(request: Request, bot: telegram.Bot) -> typing.Any:
     # if not update.message or not update.message.text:
     #     logging.info("Received an update without a text message.")
     #     return "OK"
-    if not update.message:
-        logging.info("Received an update without a message.")
+    # if not update.message:
+    #     logging.info("Received an update without a message.")
+    #     return "OK"
+    if not update.callback_query or not update.callback_query.message:
+        logging.info("Received an update without a callback_query.")
         return "OK"
 
-    chat_id = update.message.chat.id
+    # chat_id = update.message.chat.id
+    chat_id = update.callback_query.message.chat.id
     logging.info(f"chat_id={chat_id}")
     should_be_chat_id = os.environ.get("CHAT_ID")
     logging.info(f"should be chat_id={should_be_chat_id}")
@@ -75,7 +79,7 @@ async def time_react(request: Request, bot: telegram.Bot) -> typing.Any:
     data = int(update.callback_query.data)
 
     mongo_client = MongoClient(os.environ["MONGO_URL"])
-    mongo_coll = self._mongo_client["logistics"]["alex.time"]
+    mongo_coll = mongo_client["logistics"]["alex.time"]
     msg = mongo_coll.find_one({"telegram_message_id": message_id})
     if msg is None:
         logging.error(f"could not find keyboard for message_id={message_id} ==> ignore")
@@ -93,7 +97,7 @@ async def time_react(request: Request, bot: telegram.Bot) -> typing.Any:
         {
             "$set": {
                 "category": time_category,
-                "_last_modification_date": _common.to_utc_datetime(),
+                "_last_modification_date": common.to_utc_datetime(),
             }
         },
     )
