@@ -57,6 +57,7 @@ class HabitsJob:
                 )
 
         # Upsert new habits using a single, efficient bulk write operation
+        self._logger.info(f"have {len(punches_to_create)} punches to create")
         if punches_to_create:
             with TimerContextManager("bulk_write habits"):
                 operations = [
