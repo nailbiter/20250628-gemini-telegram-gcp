@@ -1,4 +1,4 @@
-## 2025-10-04
+## `2025-10-04`
 
 ### \#\# Step 1: Set Up the GCP Infrastructure
 
@@ -104,3 +104,35 @@ gcloud run deploy heartbeat-time-service \
   --event-filters="topic=heartbeat-time-topic" \
   --service-account="pyassistantbot3-sa@api-project-424250507607.iam.gserviceaccount.com"
   ```
+
+## `2025-10-05`
+
+
+**2. Deploy the New Cloud Run Service**
+This command creates the `heartbeat-habits-service`. Note the new service name and the new `--command` value.
+
+```bash
+gcloud run deploy heartbeat-habits-service \
+  --image gcr.io/api-project-424250507607/py-assistant-bot \
+  --service-account "pyassistantbot3-sa@api-project-424250507607.iam.gserviceaccount.com" \
+  --set-secrets="TELEGRAM_TOKEN=20250628-telegram-token-alex-gemini-bot:latest,MONGO_URL=mongo-url-gaq:latest" \
+  --set-env-vars="CHAT_ID=[YOUR_CHAT_ID]" \
+  --region "us-east1" \
+  --allow-unauthenticated \
+  --command="gunicorn","--bind","0.0.0.0:8080","--workers","1","--threads","8","--timeout","0","heartbeat_habits_main:app"
+```
+
+**3. Create the Eventarc Trigger Manually**
+Finally, this command connects your new scheduler (`heartbeat-habits-topic`) to your new service (`heartbeat-habits-service`).
+
+```bash
+gcloud eventarc triggers create heartbeat-habits-trigger \
+  --destination-run-service="heartbeat-habits-service" \
+  --destination-run-region="us-east1" \
+  --location="us-east1" \
+  --event-filters="type=google.cloud.pubsub.topic.v1.messagePublished" \
+  --transport-topic="heartbeat-habits-topic" \
+  --service-account="pyassistantbot3-sa@api-project-424250507607.iam.gserviceaccount.com"
+```
+
+Once these steps are complete, your second automated service will be live and running on the new serverless architecture.
