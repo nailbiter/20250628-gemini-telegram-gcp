@@ -40,6 +40,7 @@ else:
 #         logging.error(f"Failed to configure Gemini: {e}")
 # else:
 #     logging.warning("GEMINI_API_KEY environment variable not set.")
+gemini_model = 1
 
 
 # --- Webhook Endpoint ---
