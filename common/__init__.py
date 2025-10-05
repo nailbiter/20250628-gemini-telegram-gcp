@@ -306,3 +306,6 @@ def get_configured_logger(
         app_console_handler.setFormatter(formatter)
     app_logger.addHandler(app_console_handler)
     return app_logger
+
+
+TARGET_TIMEZONE = "America/New_York"
