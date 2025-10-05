@@ -59,6 +59,7 @@ class HabitsJob:
                     }
                 )
 
+        self._logger.info(f"{len(punches_to_create)} punches")
         if punches_to_create:
             with TimerContextManager("bulk_write habits"):
                 operations = [
