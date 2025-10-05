@@ -4,6 +4,9 @@ from fastapi import FastAPI, Request, Response
 import telegram
 from telegram.request import HTTPXRequest
 import typing
+import common
+from pymongo import MongoClient
+from datetime import datetime, timedelta
 
 # import google.generativeai as genai
 
@@ -53,25 +56,58 @@ async def time_react(request: Request, bot: telegram.Bot) -> typing.Any:
         logging.error(f"Could not decode Telegram update: {e}")
         return Response(content="Invalid request", status_code=400)
 
-    if not update.message or not update.message.text:
-        logging.info("Received an update without a text message.")
+    # if not update.message or not update.message.text:
+    #     logging.info("Received an update without a text message.")
+    #     return "OK"
+    if not update.message:
+        logging.info("Received an update without a message.")
         return "OK"
 
     chat_id = update.message.chat.id
     logging.info(f"chat_id={chat_id}")
     should_be_chat_id = os.environ.get("CHAT_ID")
     logging.info(f"should be chat_id={should_be_chat_id}")
-    assert should_be_chat_id is None or str(should_be_chat_id) == str(chat_id)
-    user_text = update.message.text
-    logging.info(f"Received message from chat_id {chat_id}: '{user_text}'")
+    if not (should_be_chat_id is None or str(should_be_chat_id) == str(chat_id)):
+        logging.info(f"{should_be_chat_id}!={chat_id}")
+        return "OK"
+
+    message_id = update.callback_query.message.message_id
+    data = int(update.callback_query.data)
+
+    mongo_client = MongoClient(os.environ["MONGO_URL"])
+    mongo_coll = self._mongo_client["logistics"]["alex.time"]
+    msg = mongo_coll.find_one({"telegram_message_id": message_id})
+    if msg is None:
+        logging.error(f"could not find keyboard for message_id={message_id} ==> ignore")
+        return "OK"
+    elif msg["category"] is not None:
+        logging.warning(
+            f"already have saved state \"{msg['category']}\" for message_id={message_id} ==> ignore"
+        )
+        return "OK"
+    time_category = common.TIME_CATS[data]
+    logging.info(time_category)
+    # FIXME: use `sanitize_mongo` of `heartbeat_time`
+    mongo_coll.update_one(
+        {"telegram_message_id": message_id},
+        {
+            "$set": {
+                "category": time_category,
+                "_last_modification_date": _common.to_utc_datetime(),
+            }
+        },
+    )
 
     try:
-        # logging.info(f"Generating content with Gemini model '{GEMINI_MODEL_NAME}'...")
-        # response = gemini_model.generate_content(user_text)
-        # gemini_response_text = response.text
-
-        await bot.send_message(chat_id=chat_id, text="hi")
-        logging.info(f"Successfully sent Gemini response to chat_id {chat_id}")
+        _now = datetime.now()
+        await bot.delete_message(chat_id, message_id)
+        await bot.send_message(
+            chat_id=chat_id,
+            text=f"""
+    got: {time_category}
+    remaining time to live: {str(datetime(1991+70,12,24)-_now)} 
+        """.strip(),
+        )
 
     except Exception as e:
         logging.error(
@@ -79,7 +115,7 @@ async def time_react(request: Request, bot: telegram.Bot) -> typing.Any:
         )
         # We don't try to send another message on failure here, to avoid cascading errors.
 
-    # Always return a 200 OK to Telegram to acknowledge receipt of the update
+    # # Always return a 200 OK to Telegram to acknowledge receipt of the update
     return "OK"
 
 
