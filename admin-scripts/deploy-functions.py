@@ -37,14 +37,15 @@ CMD = Template(
   --set-secrets="TELEGRAM_TOKEN=20250628-telegram-token-alex-gemini-bot:latest,MONGO_URL=mongo-url-gaq:latest" \
   --set-env-vars="CHAT_ID={{chat_id}}" \
   --region "us-east1" \
-  --allow-unauthenticated \
   {% if command=='gunicorn' -%}
   --command="gunicorn","--bind","0.0.0.0:8080","--workers","1","--threads","8","--timeout","0","{{ script }}:app" \
   {% elif command=='uvicorn' -%}
   --command="gunicorn","-k","uvicorn.workers.UvicornWorker","--bind","0.0.0.0:8080","--workers","1","{{ script }}:app" \
   {% endif -%}
-  {% if not allow_unauthenticated -%}
-  --no-allow-unauthenticated
+  {% if allow_unauthenticated -%}
+  --allow-unauthenticated \
+  {% else -%}
+  --no-allow-unauthenticated \
   {% endif -%}
     --project {{project_id}}
 """
