@@ -99,4 +99,11 @@ async def telegram_webhook(request: Request):
         if not id_token:
             return "OK" # Fail silently to Telegram, but log the error.
         
-        headers
+        headers = {'Authorization': f'Bearer {id_token}'}
+        try:
+            # Forward the entire Telegram update payload
+            requests.post(ACTOR_SERVER_URL, headers=headers, json=update_json)
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error calling actor server: {e}")
+
+    return "OK"
