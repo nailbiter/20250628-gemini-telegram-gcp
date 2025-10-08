@@ -1,68 +1,80 @@
 # actor_server.py
 import os
 import logging
-from datetime import datetime
-from flask import Flask, request
+import telegram
+import asyncio
+from fastapi import FastAPI, Request, Response
+from _actor import add_money
+import functools
 from pymongo import MongoClient
-import pytz
 
-# The shared `common` module is used here
-from common import MONGO_COLL_NAME, TIME_CATS
+# --- Initialization ---
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+app = FastAPI()
 
-logging.basicConfig(level=logging.INFO)
-app = Flask(__name__)
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+bot = telegram.Bot(token=TELEGRAM_TOKEN) if TELEGRAM_TOKEN else None
 
-# Initialize clients once
-MONGO_URL = os.environ.get('MONGO_URL')
-if not MONGO_URL:
-    logging.warning("MONGO_URL not set. Database functionality disabled.")
-    mongo_client = None
-else:
-    mongo_client = MongoClient(MONGO_URL)
+MONGO_URL = os.environ.get("MONGO_URL")
+mongo_client = MongoClient(MONGO_URL) if MONGO_URL else None
 
-@app.route("/", methods=["POST"])
-def handle_callback():
+
+# --- Webhook Endpoint ---
+@app.post("/")
+async def handle_callback(request: Request):
     """
-    Handles a callback_query payload forwarded from the dispatcher.
-    Cloud Run has already verified the request is authenticated.
+    Handles a callback_query payload forwarded from the dispatcher
+    and echoes the original message text.
     """
-    if not mongo_client:
-        return "Internal Server Error: DB not configured", 500
+    if not bot:
+        logging.error("TELEGRAM_TOKEN not configured.")
+        return Response(content="Service not configured", status_code=500)
 
-    payload = request.get_json()
-    if not payload:
-        return "Bad Request: No JSON payload received", 400
-
-    logging.info(f"Processing callback query: {payload}")
-    
     try:
-        message_id = payload['message']['message_id']
-        category_index = int(payload['data'])
-        category = TIME_CATS[category_index]
-        
-        time_coll = mongo_client[MONGO_COLL_NAME]["alex.time"]
-        
-        # Find the record created by the heartbeat service and update it
-        result = time_coll.update_one(
-            {"telegram_message_id": message_id},
-            {
-                "$set": {
-                    "category": category,
-                    "_last_modification_date": datetime.now(pytz.utc),
-                }
-            }
-        )
-        logging.info(f"DB update result: {result.matched_count} matched, {result.modified_count} modified.")
+        payload = await request.json()
+    except Exception:
+        return Response(content="Invalid JSON payload", status_code=400)
 
-    except (KeyError, IndexError, ValueError) as e:
-        logging.error(f"Error processing payload: {e}")
-        return "Bad Request: Malformed payload", 400
+    logging.info(f"Processing forwarded payload: {payload}")
+
+    try:
+        # Extract the necessary info from the callback_query payload
+        chat_id = payload["message"]["chat"]["id"]
+        original_text = payload["message"]["text"]
+
+        text = original_text.strip()
+        cmd, *_ = text.split()
+        logging.info(f"cmd: `{cmd}`")
+
+        is_matched: bool = False
+        commands = {"/money": add_money}
+        for k, cb in commands.items():
+            if k == cmd:
+                await cb(
+                    text.removeprefix(cmd).strip(),
+                    # send_message=functools.partial(bot.send_message, chat_id=chat_id),
+                    send_message_cb=lambda text: bot.send_message(
+                        text=text, chat_id=chat_id
+                    ),
+                    mongo_client=mongo_client,
+                )
+                is_matched = True
+                break
+
+        if not is_matched:
+            # Formulate the echo message
+            echo_text = f"Button press received from message: '{original_text}'"
+
+            # Send the echo message back to the chat
+            await bot.send_message(chat_id=chat_id, text=echo_text)
+
+    except (KeyError, IndexError) as e:
+        logging.error(f"Error processing payload, missing key: {e}")
+        # Don't return an error to the dispatcher, just log it.
     except Exception as e:
         logging.error(f"An unexpected error occurred: {e}", exc_info=True)
-        return "Internal Server Error", 500
 
-    return "OK", 200
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    # Always return a 200 OK to the calling dispatcher service.
+    return "OK"

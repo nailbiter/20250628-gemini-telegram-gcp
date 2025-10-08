@@ -205,7 +205,7 @@ def get_coll(mongo_pass, collection_name="alex.time", apply_options=False):
     return coll
 
 
-def spl(s, sep=None):
+def spl(s: str, sep: typing.Optional[str] = None) -> list[str]:
     if sep is None:
         s, sep = s[:-1], s[-1]
     return s.split(sep)
@@ -309,3 +309,11 @@ def get_configured_logger(
 
 
 TARGET_TIMEZONE = "America/New_York"
+
+
+def date_to_grid(dt: datetime, grid_hours: bool = False) -> datetime:
+    kw = dict(second=0, microsecond=0)
+    if grid_hours:
+        kw["hour"] = 0
+        kw["minute"] = 0
+    return dt.replace(**kw)
