@@ -1,12 +1,3 @@
-Of course. Here is the final, optimized `Dockerfile` using the recommended distroless strategy.
-
-This version incorporates all the best practices we've discussed: it uses a multi-stage build, installs `git` only in the temporary builder stage, and results in a minimal, secure final image.
-
------
-
-## \#\# Final `Dockerfile`
-
-```dockerfile
 # Dockerfile
 
 # ==============================================================================
@@ -51,4 +42,3 @@ ENV PYTHONPATH=/wheels
 # This can be overridden by the --command flag during 'gcloud run deploy'.
 # Example for a FastAPI app:
 CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "time_react:app"]
-```
