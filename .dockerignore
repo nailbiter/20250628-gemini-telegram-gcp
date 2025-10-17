@@ -1,0 +1,34 @@
+# .dockerignore
+
+# Git and CI/CD
+.git
+.github
+.gitignore
+
+# Python virtual environment
+.venv/
+venv/
+venv-admin/
+
+# Local secrets and environment files
+.env
+*.env
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build and distribution artifacts
+build/
+dist/
+*.egg-info
+
+# Local user settings
+.vscode/
+.idea/
+
+# Test files (don't need them in production image)
+tests/
+pytest.ini
