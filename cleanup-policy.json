@@ -1,0 +1,12 @@
+{
+  "action": {
+    "type": "Delete"
+  },
+  "condition": {
+    "versionAgeDays": 0,
+    "packageNamePrefixes": [
+      "py-assistant-bot"
+    ],
+    "keepCount": 10
+  }
+}
