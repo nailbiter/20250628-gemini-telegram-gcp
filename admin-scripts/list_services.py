@@ -1,81 +1,56 @@
-#!/usr/bin/env python
-# list_services.py
+#!/usr/bin/env python3
 import click
 import logging
-import subprocess
-import json
+from google.cloud import run_v2
+from google.api_core import exceptions
 
 # Configure basic logging
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-
-
-def run_command(cmd):
-    """Helper function to run a command and return its output."""
-    logging.info(f"> {cmd}")
-    try:
-        # Using check_output to capture stdout and raise an exception on non-zero exit codes
-        result = subprocess.check_output(
-            cmd, shell=True, stderr=subprocess.PIPE, text=True
-        )
-        return result.strip()
-    except subprocess.CalledProcessError as e:
-        logging.error(f"Command failed with exit code {e.returncode}:\n{e.stderr}")
-        raise RuntimeError(f"Command failed: {cmd}")
-
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 @click.command()
-@click.option(
-    "--project-id",
-    required=True,
-    envvar="GCLOUD_PROJECT",
-    help="Your GCP project ID. Can be set via GCLOUD_PROJECT env var.",
-)
-def list_services(project_id):
+@click.option('--project-id', required=True, envvar='GCLOUD_PROJECT', help='Your GCP project ID. Can be set via GCLOUD_PROJECT env var.')
+@click.option('--region', multiple=True, required=True, help='GCP region to check. Can be specified multiple times (e.g., --region us-east1 --region us-central1).')
+def list_services(project_id, region):
     """
-    Lists all Cloud Run services and their URLs for a given GCP project.
+    Lists all Cloud Run services and their URLs for a given GCP project in the specified regions.
     """
     try:
-        logging.info(f"Fetching services for project '{project_id}'...")
-        # The --format="json" flag returns machine-readable output
-        list_cmd = f'gcloud run services list --project="{project_id}" --format="json"'
+        client = run_v2.ServicesClient()
+        all_services = []
 
-        services_json_str = run_command(list_cmd)
+        # Iterate through the regions provided on the command line
+        for loc in region:
+            logging.info(f"Checking for services in region: {loc}...")
+            parent = f'projects/{project_id}/locations/{loc}'
 
-        if not services_json_str:
-            logging.info("No services found in this project.")
+            try:
+                # List the services in the current region
+                list_request = run_v2.ListServicesRequest(parent=parent)
+                for service in client.list_services(request=list_request):
+                    all_services.append(service)
+            except exceptions.PermissionDenied:
+                logging.warning(f"Permission denied to list services in {loc}. Skipping.")
+                continue
+
+        if not all_services:
+            logging.info("No services found in the specified regions.")
             return
-
-        services = json.loads(services_json_str)
-
-        if not services:
-            logging.info("No services found in this project.")
-            return
-
+            
         click.echo("\n--- Deployed Cloud Run Services ---")
-        # Format the output for readability
-        for service in services:
-            name = service.get("metadata", {}).get("name", "N/A")
-            region = (
-                service.get("metadata", {})
-                .get("labels", {})
-                .get("cloud.googleapis.com/location", "N/A")
-            )
-            url = service.get("status", {}).get("url", "N/A")
-
+        for service in all_services:
+            name = service.name.split('/')[-1]
+            region_name = service.name.split('/')[-3] # Get region from the full name
+            url = service.uri
+            
             click.echo(f"  - Service: {name}")
-            click.echo(f"    Region:  {region}")
+            click.echo(f"    Region:  {region_name}")
             click.echo(f"    URL:     {url}")
             click.echo("-" * 35)
 
-    except RuntimeError:
-        logging.error(
-            "Failed to list services. Please check your gcloud authentication and permissions."
-        )
-    except json.JSONDecodeError:
-        logging.error(
-            "Failed to parse the output from gcloud. The command may have changed."
-        )
+    except exceptions.PermissionDenied:
+        logging.error("Permission denied. Ensure the Cloud Run Admin API is enabled and you have the 'Cloud Run Viewer' role.")
+    except Exception as e:
+        logging.error(f"An unexpected error occurred: {e}")
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     list_services()
