@@ -1,0 +1,14 @@
+{
+  "rule": [
+    {
+      "action": {
+        "type": "Delete"
+      },
+      "condition": {
+        "isLive": false,
+        "age": 60,
+        "numNewerVersions": 5
+      }
+    }
+  ]
+}
