@@ -1,6 +1,6 @@
 {
   "action": {
-    "type": "Delete"
+    "type": "DELETE"
   },
   "condition": {
     "versionAgeDays": 0,
