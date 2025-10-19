@@ -101,26 +101,177 @@ async def telegram_webhook(request: Request):
     # --- NEW: Else, dispatch it to a generic actor server ---
     # 2. For any other message type, forward it to the private actor server.
     else:
-        process_message(update_json)
+        await process_message(update_json)
 
     return "OK"
 
 
-def process_message(update_json: dict) -> None:
-    if not ACTOR_SERVER_URL:
-        logging.info(
-            "Received an unhandled update, but no ACTOR_SERVER_URL is configured. Doing nothing."
-        )
-        return "OK"
+# def process_message(update_json: dict) -> None:
+#     if not ACTOR_SERVER_URL:
+#         logging.info(
+#             "Received an unhandled update, but no ACTOR_SERVER_URL is configured. Doing nothing."
+#         )
+#         return "OK"
 
-    logging.info(f"Dispatching update to actor server at {ACTOR_SERVER_URL}...")
-    id_token = get_id_token(ACTOR_SERVER_URL)
-    if not id_token:
-        return "OK"  # Fail silently to Telegram, but log the error.
+#     logging.info(f"Dispatching update to actor server at {ACTOR_SERVER_URL}...")
+#     id_token = get_id_token(ACTOR_SERVER_URL)
+#     if not id_token:
+#         return "OK"  # Fail silently to Telegram, but log the error.
 
-    headers = {"Authorization": f"Bearer {id_token}"}
+#     headers = {"Authorization": f"Bearer {id_token}"}
+#     try:
+#         # Forward the entire Telegram update payload
+#         requests.post(ACTOR_SERVER_URL, headers=headers, json=update_json)
+#     except requests.exceptions.RequestException as e:
+#         logging.error(f"Error calling actor server: {e}")
+# import logging
+# import requests
+# import typing
+# import telegram  # Assuming telegram library is imported elsewhere
+
+# Assume mongo_client, bot, get_id_token are defined globally or passed as arguments
+# Assume get_help() function will be provided elsewhere
+
+
+async def handle_no_match(update_json: dict) -> None:
+    """Sends a 'no match' message back to the user."""
     try:
-        # Forward the entire Telegram update payload
-        requests.post(ACTOR_SERVER_URL, headers=headers, json=update_json)
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error calling actor server: {e}")
+        chat_id = update_json.get("message", {}).get("chat", {}).get("id")
+        if chat_id and bot:
+            await bot.send_message(
+                chat_id=chat_id, text="Sorry, I don't understand that command."
+            )
+        else:
+            logging.warning(
+                "Could not send 'no match' message: chat_id or bot not available."
+            )
+    except Exception as e:
+        logging.error(f"Error in handle_no_match: {e}", exc_info=True)
+
+
+async def process_message(update_json: dict) -> None:
+    """
+    Processes incoming messages, matching prefixes from MongoDB to dispatch
+    to the appropriate Cloud Run service.
+    """
+    if not mongo_client:
+        logging.error("Mongo client not configured. Cannot process message.")
+        return
+
+    # Extract message details safely
+    message = update_json.get("message")
+
+    if not message:
+        logging.info("Update does not contain a message object.")
+        return
+
+    message_text = message.get("text")
+    chat_id = message.get("chat", {}).get("id")
+
+    if not message_text or not chat_id:
+        logging.info("Message object is missing text or chat ID.")
+        return
+
+    message_text = message_text.strip()
+    logging.debug(f"message: {message_text}")
+
+    # 2. Fetch routing rules from MongoDB
+    try:
+        hooks_coll = mongo_client["logistics"]["cloud-run-hooks-gcp"]
+        # Fetch all hooks at once
+        hooks = list(hooks_coll.find({}, {"prefix": 1, "url": 1}))
+        if not hooks:
+            logging.warning("No routing hooks found in MongoDB.")
+            await handle_no_match(update_json)
+            return
+    except Exception as e:
+        logging.error(f"Failed to fetch routing hooks from MongoDB: {e}", exc_info=True)
+        # Optionally send an error message back to the user
+        # await bot.send_message(chat_id=chat_id, text="Error accessing routing configuration.")
+        return
+
+    # 1. Special case: /help command
+    if message_text.strip() == "/help":
+        try:
+            # --- User will provide this function ---
+            help_text = get_help(hooks)
+            # -------------------------------------
+            if bot:
+                await bot.send_message(chat_id=chat_id, text=help_text)
+        except NameError:
+            logging.error("get_help() function is not defined.")
+            if bot:
+                await bot.send_message(
+                    chat_id=chat_id, text="Help information is currently unavailable."
+                )
+        except Exception as e:
+            logging.error(f"Error handling /help command: {e}", exc_info=True)
+        return  # Stop further processing
+
+    # 3. Find the longest matching prefix
+    best_match_hook = None
+    longest_match_len = -1
+
+    for hook in hooks:
+        prefix = hook.get("prefix")
+        if prefix and message_text.startswith(prefix):
+            if len(prefix) > longest_match_len:
+                longest_match_len = len(prefix)
+                best_match_hook = hook
+
+    # 4. Dispatch or handle no match
+    if best_match_hook:
+        target_url = best_match_hook.get("url")
+        if not target_url:
+            logging.error(
+                f"Matched hook for prefix '{best_match_hook.get('prefix')}' has no URL."
+            )
+            await handle_no_match(update_json)  # Fallback if URL is missing
+            return
+
+        logging.info(
+            f"Dispatching message starting with '{best_match_hook.get('prefix')}' to {target_url}..."
+        )
+        id_token = get_id_token(target_url)
+        if not id_token:
+            # Error already logged by get_id_token
+            # Optionally send an error message back to the user
+            # await bot.send_message(chat_id=chat_id, text="Error obtaining authentication token.")
+            return
+
+        headers = {"Authorization": f"Bearer {id_token}"}
+        try:
+            # Forward the entire original Telegram update payload
+            response = requests.post(target_url, headers=headers, json=update_json)
+            response.raise_for_status()  # Check for HTTP errors from the target service
+            logging.info(
+                f"Successfully dispatched to {target_url}. Status: {response.status_code}"
+            )
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error calling target service {target_url}: {e}")
+            # Optionally send an error message back to the user
+            # await bot.send_message(chat_id=chat_id, text="There was an error processing your command.")
+    else:
+        # No prefix matched
+        logging.info(f"No matching prefix found for message: '{message_text}'")
+        await handle_no_match(update_json)
+
+
+def get_help(hooks: list[dict]) -> str:
+    return "help stub"
+
+
+# --- Ensure the main webhook calls the async function correctly ---
+# You need to update the main telegram_webhook function like this:
+
+# @app.post("/")
+# async def telegram_webhook(request: Request):
+#     # ... (existing code to decode update) ...
+#
+#     if update.callback_query:
+#         # ... (existing callback handling logic) ...
+#     else:
+#         # --- CHANGED: Await the async function ---
+#         await process_message(update_json)
+#
+#     return "OK"
