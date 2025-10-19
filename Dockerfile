@@ -2,45 +2,37 @@
 
 # ==============================================================================
 # Stage 1: The "Builder" Stage
-# This stage has all the tools needed to build the application (like git).
 # ==============================================================================
 FROM python:3.9-slim as builder
 
 WORKDIR /usr/src/app
 
-# Install git, which is required by pip to install your custom toolbox from GitHub.
+# Install git for pip
 RUN apt-get update && apt-get install -y --no-install-recommends git
 
-# Install Python dependencies into a separate "wheels" directory.
-# This pre-compiles them for easy copying to the next stage.
+# Install Python dependencies directly into a target directory '/install'
 COPY requirements.txt ./
 RUN pip install --no-cache-dir --upgrade pip
-RUN pip wheel --no-cache-dir --wheel-dir /usr/src/app/wheels -r requirements.txt
+# --- FIX: Install packages fully into /install ---
+RUN pip install --no-cache-dir -r requirements.txt --target=/install
 
 
 # ==============================================================================
-# Stage 2: The Final "Runtime" Stage
-# This stage uses a minimal "distroless" image from Google. It contains
-# only Python and our application, making it small and secure.
-# It does NOT contain a shell, a package manager, or git.
+# Stage 2: The Final "Runtime" Stage (Distroless)
 # ==============================================================================
 FROM gcr.io/distroless/python3-debian11
 
 WORKDIR /app
 
-# Copy the pre-built Python packages from the builder stage.
-COPY --from=builder /usr/src/app/wheels /wheels
+# --- FIX: Copy the installed packages from the builder's /install directory ---
+# This copies them directly into the correct site-packages location for distroless
+COPY --from=builder /install /usr/lib/python3.9/site-packages
 
-RUN python3 -m pip install --no-cache /wheels/*
-
-# Copy all your application source code (e.g., *.py files).
-# It's recommended to use a .dockerignore file to exclude unnecessary files.
+# Copy your application source code (respects .dockerignore).
 COPY . .
 
-# Tell the Python interpreter where to find the installed packages.
-ENV PYTHONPATH=/wheels
+# No need for PYTHONPATH as packages are in the standard location now.
+# ENV PYTHONPATH=/wheels
 
 # The default command to run the application.
-# This can be overridden by the --command flag during 'gcloud run deploy'.
-# Example for a FastAPI app:
 CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "time_react:app"]
