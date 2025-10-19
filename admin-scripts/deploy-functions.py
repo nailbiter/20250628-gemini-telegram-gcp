@@ -38,9 +38,9 @@ CMD = Template(
   --set-env-vars="CHAT_ID={{chat_id}}" \
   --region "us-east1" \
   {% if command=='gunicorn' -%}
-  --command="gunicorn","--bind","0.0.0.0:8080","--workers","1","--threads","8","--timeout","0","{{ script }}:app" \
+  --command="python3","-m","gunicorn","--bind","0.0.0.0:8080","--workers","1","--threads","8","--timeout","0","{{ script }}:app" \
   {% elif command=='uvicorn' -%}
-  --command="gunicorn","-k","uvicorn.workers.UvicornWorker","--bind","0.0.0.0:8080","--workers","1","{{ script }}:app" \
+  --command="python3","-m","gunicorn","-k","uvicorn.workers.UvicornWorker","--bind","0.0.0.0:8080","--workers","1","{{ script }}:app" \
   {% endif -%}
   {% if allow_unauthenticated -%}
   --allow-unauthenticated \

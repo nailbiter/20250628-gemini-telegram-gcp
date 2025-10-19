@@ -258,6 +258,8 @@ async def process_message(update_json: dict) -> None:
 
 
 def get_help(hooks: list[dict]) -> str:
+    ## FIXME: change to DEBUG once stable
+    logging.info(hooks)
     return "help stub"
 
 
