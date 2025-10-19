@@ -8,13 +8,17 @@ FROM python:3.9-slim as builder
 WORKDIR /usr/src/app
 
 # Install git for pip
-RUN apt-get update && apt-get install -y --no-install-recommends git
+RUN apt-get update && apt-get install -y --no-install-recommends git && \
+    # Clean up apt lists to reduce layer size
+    rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies directly into a target directory '/install'
+# Create a virtual environment
+RUN python3 -m venv /opt/venv
+# Activate venv and install requirements
 COPY requirements.txt ./
-RUN pip install --no-cache-dir --upgrade pip
-# --- FIX: Install packages fully into /install ---
-RUN pip install --no-cache-dir -r requirements.txt --target=/install
+RUN . /opt/venv/bin/activate && \
+    pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 
 # ==============================================================================
@@ -24,15 +28,11 @@ FROM gcr.io/distroless/python3-debian11
 
 WORKDIR /app
 
-# --- FIX: Copy the installed packages from the builder's /install directory ---
-# This copies them directly into the correct site-packages location for distroless
-COPY --from=builder /install /usr/lib/python3.9/site-packages
+# --- FIX: Copy packages from the virtual environment's site-packages ---
+COPY --from=builder /opt/venv/lib/python3.9/site-packages /usr/lib/python3.9/site-packages
 
 # Copy your application source code (respects .dockerignore).
 COPY . .
 
-# No need for PYTHONPATH as packages are in the standard location now.
-# ENV PYTHONPATH=/wheels
-
-# The default command to run the application.
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "time_react:app"]
+# Run gunicorn as a module (should find it in site-packages now)
+CMD ["python3", "-m", "gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "time_react:app"]
