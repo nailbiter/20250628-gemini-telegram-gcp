@@ -31,6 +31,8 @@ WORKDIR /app
 # Copy the pre-built Python packages from the builder stage.
 COPY --from=builder /usr/src/app/wheels /wheels
 
+RUN python3 -m pip install --no-cache /wheels/*
+
 # Copy all your application source code (e.g., *.py files).
 # It's recommended to use a .dockerignore file to exclude unnecessary files.
 COPY . .
