@@ -235,14 +235,14 @@ _TELEGRAM_MESSAGE_LEN_LIM = 4000
 #     send_message_cb(f'start sleeping "{cat}"')
 
 
-# def note(content, send_message_cb=None, mongo_client=None):
-#     mongo_client[common.MONGO_COLL_NAME]["alex.notes"].insert_one(
-#         {
-#             "content": content,
-#             "date": common.to_utc_datetime(),
-#         }
-#     )
-#     send_message_cb(f'note "{content}"')
+def note(content, send_message_cb=None, mongo_client=None):
+    mongo_client[common.MONGO_COLL_NAME]["alex.notes"].insert_one(
+        {
+            "content": content,
+            "date": common.to_utc_datetime(),
+        }
+    )
+    send_message_cb(f'note "{content}"')
 
 
 # def _rand(length, code):

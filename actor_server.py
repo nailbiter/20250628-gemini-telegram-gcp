@@ -4,7 +4,7 @@ import logging
 import telegram
 import asyncio
 from fastapi import FastAPI, Request, Response
-from _actor import add_money
+from _actor import add_money, note
 import functools
 from pymongo import MongoClient
 
@@ -49,7 +49,7 @@ async def handle_callback(request: Request):
         logging.info(f"cmd: `{cmd}`")
 
         is_matched: bool = False
-        commands = {"/money": add_money}
+        commands = {"/money": add_money, "/note": note}
         for k, cb in commands.items():
             if k == cmd:
                 await cb(
