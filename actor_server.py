@@ -4,7 +4,7 @@ import logging
 import telegram
 import asyncio
 from fastapi import FastAPI, Request, Response
-from _actor import add_money, add_note
+from _actor import add_money, add_note, sleepstart, sleepend
 import functools
 from pymongo import MongoClient
 
@@ -19,6 +19,13 @@ bot = telegram.Bot(token=TELEGRAM_TOKEN) if TELEGRAM_TOKEN else None
 
 MONGO_URL = os.environ.get("MONGO_URL")
 mongo_client = MongoClient(MONGO_URL) if MONGO_URL else None
+
+COMMANDS = {
+    "/money": add_money,
+    "/note": add_note,
+    "/sleepstart": sleepstart,
+    "/sleepend": sleepend,
+}
 
 
 # --- Webhook Endpoint ---
@@ -49,8 +56,7 @@ async def handle_callback(request: Request):
         logging.info(f"cmd: `{cmd}`")
 
         is_matched: bool = False
-        commands = {"/money": add_money, "/note": add_note}
-        for k, cb in commands.items():
+        for k, cb in COMMANDS.items():
             if k == cmd:
                 await cb(
                     text.removeprefix(cmd).strip(),

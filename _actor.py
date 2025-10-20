@@ -101,27 +101,30 @@ _TELEGRAM_MESSAGE_LEN_LIM = 4000
 #         send_message_cb(f"```{_out}```", parse_mode="Markdown")
 
 
-# _SLEEP_CATS = ["sleeping", "social"]
+_SLEEP_CATS = ["sleeping", "social"]
 
 
-# def sleepend(_, send_message_cb=None, mongo_client=None):
-#     mongo_coll = mongo_client[common.MONGO_COLL_NAME]["alex.sleepingtimes"]
-#     last_record = mongo_coll.find_one(sort=[("startsleep", pymongo.DESCENDING)])
-#     cat = last_record["category"]
-#     if common.get_sleeping_state(mongo_client) is None:
-#         send_message_cb("not sleeping")
-#         return
-#     _now = datetime.now()
-#     mongo_coll.update_one(
-#         {"startsleep": last_record["startsleep"]},
-#         {"$set": {"endsleep": common.to_utc_datetime(_now)}},
-#     )
-#     heartbeat_time.SendKeyboard(
-#         mongo_url=os.environ["MONGO_URL"], is_create_bot=False
-#     ).sanitize_mongo(cat)
-#     send_message_cb(
-#         f"end sleeping \"{cat}\" (was sleeping {(_now-timedelta(hours=9))-last_record['startsleep']})"
-#     )
+async def sleepend(_, send_message_cb=None, mongo_client=None):
+    mongo_coll = mongo_client[common.MONGO_COLL_NAME]["alex.sleepingtimes"]
+    last_record = mongo_coll.find_one(sort=[("startsleep", pymongo.DESCENDING)])
+    cat = last_record["category"]
+    if common.get_sleeping_state(mongo_client) is None:
+        send_message_cb("not sleeping")
+        return
+    _now = datetime.now()
+    mongo_coll.update_one(
+        {"startsleep": last_record["startsleep"]},
+        {"$set": {"endsleep": common.to_utc_datetime(_now)}},
+    )
+
+    # FIXME
+    # heartbeat_time.SendKeyboard(
+    #     mongo_url=os.environ["MONGO_URL"], is_create_bot=False
+    # ).sanitize_mongo(cat)
+
+    await send_message_cb(
+        f"end sleeping \"{cat}\" (was sleeping {(_now-timedelta(hours=9))-last_record['startsleep']})"
+    )
 
 
 # _GSTASKS_TAGS = {
@@ -214,25 +217,25 @@ _TELEGRAM_MESSAGE_LEN_LIM = 4000
 #     send_message_cb("; ".join(msgs))
 
 
-# def sleepstart(cat, send_message_cb=None, mongo_client=None):
-#     if cat not in _SLEEP_CATS:
-#         send_message_cb(f"cat \"{cat}\" not in \"{','.join(_SLEEP_CATS)}\"")
-#         return
-#     elif common.get_sleeping_state(mongo_client) is not None:
-#         send_message_cb(f"already sleeping!")
-#         return
-#     elif (
-#         mongo_client[common.MONGO_COLL_NAME]["alex.time"]
-#         .find_one(sort=[("date", pymongo.DESCENDING)])
-#         .get("category", None)
-#         is None
-#     ):
-#         send_message_cb(f"waiting for time reply!")
-#         return
+async def sleepstart(cat, send_message_cb=None, mongo_client=None):
+    if cat not in _SLEEP_CATS:
+        await send_message_cb(f"cat \"{cat}\" not in \"{','.join(_SLEEP_CATS)}\"")
+        return
+    elif common.get_sleeping_state(mongo_client) is not None:
+        await send_message_cb(f"already sleeping!")
+        return
+    elif (
+        mongo_client[common.MONGO_COLL_NAME]["alex.time"]
+        .find_one(sort=[("date", pymongo.DESCENDING)])
+        .get("category", None)
+        is None
+    ):
+        await send_message_cb(f"waiting for time reply!")
+        return
 
-#     mongo_coll = mongo_client[common.MONGO_COLL_NAME]["alex.sleepingtimes"]
-#     mongo_coll.insert_one({"category": cat, "startsleep": common.to_utc_datetime()})
-#     send_message_cb(f'start sleeping "{cat}"')
+    mongo_coll = mongo_client[common.MONGO_COLL_NAME]["alex.sleepingtimes"]
+    mongo_coll.insert_one({"category": cat, "startsleep": common.to_utc_datetime()})
+    await send_message_cb(f'start sleeping "{cat}"')
 
 
 async def add_note(content, send_message_cb=None, mongo_client=None):
