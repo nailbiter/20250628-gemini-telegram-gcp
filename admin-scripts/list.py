@@ -27,6 +27,9 @@ def list_():
     pass
 
 
+REGIONS = ["us-east1", "us-central1"]
+
+
 @list_.command()
 @click.option(
     "--project-id",
@@ -34,8 +37,28 @@ def list_():
     envvar="GCLOUD_PROJECT",
     help="Your GCP project ID. Can be set via GCLOUD_PROJECT env var.",
 )
-def images(project_id):
+@click.option("--annotate/--no-annotate", "-A/ ")
+@click.option(
+    "--region",
+    "-r",
+    "regions",
+    multiple=True,
+    required=True,
+    type=click.Choice(REGIONS),
+    help="GCP region to check. Can be specified multiple times (e.g., --region us-east1 --region us-central1).",
+)
+def images(project_id, annotate, regions):
     df_images = get_images(project_id)
+    if annotate:
+        assert len(regions) > 0
+        df_services = get_services(project_id, regions)
+        df_images["is_in_use"] = (
+            df_images["version"]
+            .str.removeprefix("sha256:")
+            .isin(df_services["Digest sha256"])
+        )
+        logging.info(df_images["is_in_use"].value_counts())
+
     df_images.to_parquet("/tmp/df_images.prq")
     click.echo(df_images.to_string())
 
@@ -72,7 +95,7 @@ def get_images(project_id: str) -> pd.DataFrame:
     "regions",
     multiple=True,
     required=True,
-    type=click.Choice(["us-east1", "us-central1"]),
+    type=click.Choice(REGIONS),
     help="GCP region to check. Can be specified multiple times (e.g., --region us-east1 --region us-central1).",
 )
 def services(project_id, regions):
