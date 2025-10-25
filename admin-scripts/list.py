@@ -51,7 +51,7 @@ def images(project_id, annotate, regions):
     df_images = get_images(project_id)
     if annotate:
         assert len(regions) > 0
-        df_services = get_services(project_id, regions)
+        df_services = get_services(project_id, regions, is_loud=False)
         df_images["is_in_use"] = (
             df_images["version"]
             .str.removeprefix("sha256:")
@@ -116,7 +116,9 @@ def services(project_id, regions):
         logging.error(f"An unexpected error occurred: {e}", exc_info=True)
 
 
-def get_services(project_id: str, regions: list[str]) -> pd.DataFrame:
+def get_services(
+    project_id: str, regions: list[str], is_loud: bool = True
+) -> pd.DataFrame:
     services_client = run_v2.ServicesClient()
     # --- NEW: Client for fetching revision details ---
     revisions_client = run_v2.RevisionsClient()
@@ -167,7 +169,8 @@ def get_services(project_id: str, regions: list[str]) -> pd.DataFrame:
         logging.info("No services found in the specified regions.")
         return
 
-    click.echo("\n--- Deployed Cloud Run Services ---")
+    if is_loud:
+        click.echo("\n--- Deployed Cloud Run Services ---")
     for service, revision in all_services_data:
         name = service.name.split("/")[-1]
         region_name = service.name.split("/")[-3]
