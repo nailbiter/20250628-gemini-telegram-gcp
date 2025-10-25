@@ -60,7 +60,7 @@ def images(project_id, annotate, regions):
         logging.info(df_images["is_in_use"].value_counts())
 
     df_images.to_parquet("/tmp/df_images.prq")
-    click.echo(df_images.to_string())
+    click.echo(df_images)
 
 
 def get_images(project_id: str) -> pd.DataFrame:
@@ -133,7 +133,8 @@ def get_services(project_id: str, regions: list[str]) -> pd.DataFrame:
             # List the services in the current region
             list_request = run_v2.ListServicesRequest(parent=parent)
             for service in tqdm.tqdm(
-                services_client.list_services(request=list_request)
+                services_client.list_services(request=list_request),
+                desc="list_services",
             ):
                 latest_revision_name = service.latest_ready_revision
                 revision_detail = None
