@@ -47,7 +47,7 @@ REGIONS = ["us-east1", "us-central1"]
     type=click.Choice(REGIONS),
     help="GCP region to check. Can be specified multiple times (e.g., --region us-east1 --region us-central1).",
 )
-@click.option("--purge/--no-purge", default=False)
+@click.option("--purge/--no-purge", "-P/ ", default=False)
 @click.option("--dry-run/--no-dry-run", " /-F", default=True)
 def images(project_id, annotate, regions, purge, dry_run):
     df_images = get_images(project_id)
