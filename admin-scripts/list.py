@@ -65,8 +65,40 @@ def images(project_id, annotate, regions, purge, dry_run):
     click.echo(df_images)
 
     if purge:
-        logging.warning(f"starting the purge (dry_run={dry_run})")
-        raise NotImplementedError()
+        if "is_in_use" not in df_images.columns:
+            logging.error(
+                "Cannot purge without annotation. Please run with the --annotate flag."
+            )
+            return
+
+        images_to_delete = df_images[~df_images["is_in_use"]]
+
+        if dry_run:
+            logging.warning(
+                f"Dry run: Found {len(images_to_delete)} images that would be deleted."
+            )
+            if not images_to_delete.empty:
+                click.echo(images_to_delete[["package", "version", "tags"]])
+            return
+
+        logging.warning(f"Starting the purge of {len(images_to_delete)} images...")
+
+        for _, row in tqdm.tqdm(
+            images_to_delete.iterrows(),
+            total=len(images_to_delete),
+            desc="Purging images",
+        ):
+            image_name = f"{row['package']}@{row['version']}"
+            delete_cmd = (
+                f"gcloud artifacts docker images delete {image_name} "
+                f"--project={project_id} --quiet"
+            )
+
+            ec, out = subprocess.getstatusoutput(delete_cmd)
+            if ec != 0:
+                logging.error(f"Failed to delete image {image_name}: {out}")
+            else:
+                logging.info(f"Successfully deleted image: {image_name}")
 
 
 def get_images(project_id: str) -> pd.DataFrame:
