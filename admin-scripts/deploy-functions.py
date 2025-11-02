@@ -65,7 +65,7 @@ def _render_cmd(*args, **kwargs) -> str:
 @click.option("-s", "--script", type=click.Path(), required=True)
 @click.option("-n", "--service-name", required=True)
 @click.option(
-    " /-N", "--allow-unauthenticated/--no-allow-unauthenticated", default=True
+    " /-N", "--allow-unauthenticated/--no-allow-unauthenticated", default=False
 )
 @click.option(
     "-C", "--command", type=click.Choice(["gunicorn", "uvicorn"]), default="gunicorn"
