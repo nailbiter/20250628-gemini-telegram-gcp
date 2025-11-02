@@ -29,10 +29,10 @@ class HeartbeatJob:
     def run(self):
         """The main logic of the job."""
         _now = datetime.now()
-        self._logger.warning(f"Heartbeat job running at {_now.isoformat()}")
+        self._logger.info(f"Heartbeat job running at {_now.isoformat()}")
 
         sleeping_state = get_sleeping_state(self._mongo_client)
-        self._logger.warning(f"Sleeping state: {sleeping_state}")
+        self._logger.info(f"Sleeping state: {sleeping_state}")
 
         message_id = "FAILURE"
         try:
@@ -58,7 +58,7 @@ class HeartbeatJob:
                 "telegram_message_id": message_id,
             }
         )
-        self._logger.warning(f"Inserted record ID: {res.inserted_id}")
+        self._logger.info(f"Inserted record ID: {res.inserted_id}")
 
     def _send_keyboard(self, text):
         keyboard = [
@@ -79,7 +79,7 @@ class HeartbeatJob:
         return self._bot.send_message(chat_id=self._chat_id, text=text)
 
     def _sanitize_mongo(self, imputation_state):
-        self._logger.warning(f"Sanitizing with imputation state: {imputation_state}")
+        self._logger.info(f"Sanitizing with imputation state: {imputation_state}")
         mongo_coll = self._mongo_client[MONGO_COLL_NAME]["alex.time"]
 
         # Use update_many for efficiency
@@ -93,4 +93,4 @@ class HeartbeatJob:
             },
         )
         if result.modified_count > 0:
-            self._logger.warning(f"Sanitized {result.modified_count} records.")
+            self._logger.info(f"Sanitized {result.modified_count} records.")
