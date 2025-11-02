@@ -73,7 +73,7 @@ def _render_cmd(*args, **kwargs) -> str:
 @click.option(
     "-P", "--project-id", required=True, envvar="GCLOUD_PROJECT", show_envvar=True
 )
-@click.option("--chat_id", required=True, type=int, envvar="CHAT_ID", show_envvar=True)
+@click.option("--chat-id", required=True, type=int, envvar="CHAT_ID", show_envvar=True)
 def deploy_functions(
     script, chat_id, service_name, project_id, command, allow_unauthenticated
 ):
