@@ -167,7 +167,7 @@ class TimerContextManager:
     def __init__(self, name, printer=None):
         self._name = name
         if printer is None:
-            printer = logging.warning
+            printer = logging.info
         self._printer = printer
 
     def __enter__(self):

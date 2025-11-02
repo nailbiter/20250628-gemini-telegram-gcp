@@ -85,8 +85,4 @@ def send_keyboard(chat_id, token):
 
 
 if __name__ == "__main__":
-    #    fn = ".env"
-    #    if path.isfile(fn):
-    #        logging.warning(f"loading `{fn}`")
-    #        load_dotenv(dotenv_path=fn)
     send_keyboard()
