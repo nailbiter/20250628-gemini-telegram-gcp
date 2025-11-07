@@ -52,7 +52,7 @@ import pymongo.collection
 from bson.codec_options import CodecOptions
 from dateutil.relativedelta import relativedelta
 import pytz
-import _common
+import common as _common
 
 
 _LOCAL_TZ_NAME = "Asia/Tokyo"
