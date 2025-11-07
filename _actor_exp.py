@@ -33,7 +33,7 @@ import random
 import string
 import pandas as pd
 
-from gstasks import setup_ctx_obj, real_add
+from _gstasks import setup_ctx_obj, real_add
 import functools
 import collections
 import typing

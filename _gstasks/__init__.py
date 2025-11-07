@@ -544,3 +544,57 @@ def real_rolling_log_add(
     logging.warning(r)
     res = coll.insert_one(r)
     return res
+
+
+def real_add(
+    ctx,
+    names: list[str],
+    create_new_tag: bool = False,
+    names_batch_file: typing.Optional[str] = None,
+    post_hook: typing.Optional[str] = None,
+    dry_run: bool = False,
+    **kwargs,
+) -> dict:
+    names = list(names)
+    if names_batch_file is not None:
+        with click.open_file(names_batch_file) as f:
+            lines = f.readlines()
+        lines = [line.strip() for line in lines if len(line.strip()) > 0]
+        names.extend(lines)
+    logging.warning(names)
+    assert len(names) > 0
+
+    task_list = ctx.obj["task_list"]
+    if kwargs.get("tags", []):
+        _process_tag = TagProcessor(
+            task_list.get_coll("tags"),
+            create_new_tag=create_new_tag,
+            flag_name="--create-new-tag",
+        )
+        kwargs["tags"] = [_process_tag(tag) for tag in kwargs.get("tags", [])]
+
+    labels_types = ctx.obj["labels_types"]
+    label = {k: v for k, v in kwargs.get("label", [])}
+    for k, v in label.items():
+        for k in labels_types:
+            assert labels_types[k].is_validated(v), (k, labels_types[k], v)
+    kwargs["label"] = label
+
+    debug_info = dict(uuids=[])
+
+    for name in names:
+        assert name is not None
+        kwargs["name"] = name
+        uuid = task_list.insert_or_replace_record(
+            copy.deepcopy(kwargs), dry_run=dry_run
+        )
+        debug_info["uuids"].append(uuid)
+        if not dry_run:
+            # UuidCacher(ctx.obj["uuid_cache_db"]).add(uuid, name)
+            pass
+
+    if (post_hook is not None) and (not dry_run):
+        logging.warning(f'executing post_hook "{post_hook}"')
+        os.system(post_hook)
+
+    return debug_info
