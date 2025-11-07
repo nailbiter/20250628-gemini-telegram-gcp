@@ -1,0 +1,315 @@
+"""===============================================================================
+
+        FILE: _actor.py
+
+       USAGE: (not intended to be directly executed)
+
+ DESCRIPTION: 
+
+     OPTIONS: ---
+REQUIREMENTS: ---
+        BUGS: ---
+       NOTES: ---
+      AUTHOR: Alex Leontiev (alozz1991@gmail.com)
+ORGANIZATION: 
+     VERSION: ---
+     CREATED: 2021-12-15T13:30:12.967895
+    REVISION: ---
+
+==============================================================================="""
+import common
+import re
+from datetime import datetime, timedelta
+import subprocess
+import pymongo
+import common
+from common import spl, date_to_grid
+import common.simple_math_eval
+
+# import heartbeat_time
+import os
+import logging
+import random
+import string
+import pandas as pd
+
+from gstasks import setup_ctx_obj, real_add
+import functools
+import collections
+import typing
+
+MockClickContext = collections.namedtuple("MockClickContext", "obj", defaults=[{}])
+
+
+async def add_money(
+    text: str, send_message_cb: typing.Callable = None, mongo_client=None
+):
+    assert send_message_cb is not None
+    assert mongo_client is not None
+    amount, *other = re.split(r" +", text)
+    amount = common.simple_math_eval.simple_math_eval(amount)
+    assert amount != 0, "amount==0"
+    tags = set()
+    date = datetime.now()
+    category = None
+    for i, x in enumerate(other):
+        if x.startswith("#"):
+            x = x[1:]
+            if x in ["food", "fun"]:
+                category = x
+            else:
+                tags.add(x)
+        elif x.startswith("%"):
+            x = x[1:]
+            if len(x) == 12:
+                date = datetime.strptime(x, "%Y%m%d%H%M")
+            elif len(x) == 6:
+                date = datetime.strptime(x, "%d%H%M")
+                now = datetime.now()
+                date = date.replace(**{k: getattr(now, k) for k in spl("year,month,")})
+        else:
+            break
+    i += 1
+    comment = " ".join(other[i:])
+    assert category is not None, "no category"
+    mongo_client[common.MONGO_COLL_NAME]["alex.money"].insert_one(
+        {
+            "date": common.to_utc_datetime(date),
+            "comment": comment,
+            "tags": sorted(list(tags)),
+            "category": category,
+            "amount": amount,
+        }
+    )
+    await send_message_cb(
+        f"added amount {amount} to category {category} on {date.strftime('%Y-%m-%d %H:%M')}"
+    )
+
+
+# https://dev-qa.com/320717/sending-large-messages-telegram-bot
+# _TELEGRAM_MESSAGE_LEN_LIM = 4096
+_TELEGRAM_MESSAGE_LEN_LIM = 4000
+
+
+# def os_command(text, send_message_cb=None, command=None, **_):
+#     assert command is not None
+#     cmd = f"{command} {text}"
+#     ec, out = subprocess.getstatusoutput(cmd)
+#     assert ec == 0, (cmd, ec, out)
+
+#     for _out in common.split_long_text(out, _TELEGRAM_MESSAGE_LEN_LIM):
+#         send_message_cb(f"```{_out}```", parse_mode="Markdown")
+
+
+_SLEEP_CATS = ["sleeping", "social"]
+
+
+async def sleepend(_, send_message_cb=None, mongo_client=None):
+    mongo_coll = mongo_client[common.MONGO_COLL_NAME]["alex.sleepingtimes"]
+    last_record = mongo_coll.find_one(sort=[("startsleep", pymongo.DESCENDING)])
+    cat = last_record["category"]
+    if common.get_sleeping_state(mongo_client) is None:
+        send_message_cb("not sleeping")
+        return
+    _now = datetime.now()
+    mongo_coll.update_one(
+        {"startsleep": last_record["startsleep"]},
+        {"$set": {"endsleep": common.to_utc_datetime(_now)}},
+    )
+
+    # FIXME
+    # heartbeat_time.SendKeyboard(
+    #     mongo_url=os.environ["MONGO_URL"], is_create_bot=False
+    # ).sanitize_mongo(cat)
+
+    await send_message_cb(
+        f"end sleeping \"{cat}\" (was sleeping {(_now-timedelta(hours=9))-last_record['startsleep']})"
+    )
+
+
+_GSTASKS_TAGS = {
+    # (kwargs: dict, ) -> dict
+    "tomorrow": lambda _: dict(
+        scheduled_date=date_to_grid(datetime.now() + timedelta(days=1), grid_hours=True)
+    ),
+    "findout": lambda kwargs: dict(
+        tags=[*kwargs.get("tags", []), "findout"], create_new_tag=True
+    ),
+}
+
+
+# # def _add_kwarg_tomorrow(kwargs: dict) -> None:
+# #     pass
+
+
+def ttask(
+    content: str,
+    send_message_cb: typing.Optional[typing.Callable] = None,
+    mongo_client=None,
+    is_sophisticated: bool = True,
+):
+    if True:
+        ctx = MockClickContext()
+        setup_ctx_obj(ctx, mongo_url=os.environ["PYASSISTANTBOT_MONGO_URL"], list_id="")
+        kwargs = dict(URL=None)
+        for k, cb in _GSTASKS_TAGS.items():
+            if content.find(f"#{k}") >= 0:
+                logging.warning((f"#{k}", content))
+                kwargs = {**kwargs, **cb(kwargs)}
+        debug_info = real_add(
+            ctx,
+            names=[content],
+            # scheduled_date=date_to_grid(
+            #     datetime.now() + timedelta(days=1), grid_hours=True
+            # ),
+            # URL=None,
+            **kwargs,
+        )
+        logging.warning(debug_info)
+        (_uuid,) = debug_info["uuids"]
+        send_message_cb(
+            f'log "{content}"\n```\n{kwargs}\n```\n `{_uuid}`', parse_mode="Markdown"
+        )
+    else:
+        mongo_client[common.MONGO_COLL_NAME]["alex.ttask"].insert_one(
+            {
+                "content": content,
+                "date": common.to_utc_datetime(),
+            }
+        )
+        send_message_cb(f'log "{content}"')
+
+
+# # https://www.nhs.uk/common-health-questions/food-and-diet/what-should-my-daily-intake-of-calories-be/
+# _MAX_CAL_DAY = 2500
+
+
+# def nutrition(text, send_message_cb=None, mongo_client=None):
+#     """
+#     FIXME:
+#         1. computation
+#         2. show amount
+#     """
+#     msgs = []
+#     if len(text) > 0:
+#         amount, *tail = re.split(r"\s+", text, 1)
+#         amount_kcal = common.simple_math_eval.eval_expr(amount)
+#         mongo_client[common.MONGO_COLL_NAME]["alex.nutrition"].insert_one(
+#             {
+#                 "amount_kcal": amount_kcal,
+#                 "tail": None if len(tail) == 0 else tail[0],
+#                 "date": common.to_utc_datetime(),
+#             }
+#         )
+#         msgs.append(f'nutrition "{(amount_kcal,tail)}"')
+
+#     # FIXME: filter on server-side
+#     nutrition_df = pd.DataFrame(
+#         mongo_client[common.MONGO_COLL_NAME]["alex.nutrition"].find()
+#     )
+#     nutrition_df.date = nutrition_df.date.apply(
+#         functools.partial(common.to_utc_datetime, inverse=True)
+#     )
+#     nutrition_df = nutrition_df[
+#         nutrition_df.date.apply(lambda dt: dt.date()) == datetime.now().date()
+#     ]
+#     msgs.append(f"{_MAX_CAL_DAY-nutrition_df.amount_kcal.sum()} still remains")
+
+#     send_message_cb("; ".join(msgs))
+
+
+async def sleepstart(cat, send_message_cb=None, mongo_client=None):
+    if cat not in _SLEEP_CATS:
+        await send_message_cb(f"cat \"{cat}\" not in \"{','.join(_SLEEP_CATS)}\"")
+        return
+    elif common.get_sleeping_state(mongo_client) is not None:
+        await send_message_cb(f"already sleeping!")
+        return
+    elif (
+        mongo_client[common.MONGO_COLL_NAME]["alex.time"]
+        .find_one(sort=[("date", pymongo.DESCENDING)])
+        .get("category", None)
+        is None
+    ):
+        await send_message_cb(f"waiting for time reply!")
+        return
+
+    mongo_coll = mongo_client[common.MONGO_COLL_NAME]["alex.sleepingtimes"]
+    mongo_coll.insert_one({"category": cat, "startsleep": common.to_utc_datetime()})
+    await send_message_cb(f'start sleeping "{cat}"')
+
+
+async def add_note(content, send_message_cb=None, mongo_client=None):
+    logging.info(f"content: {content}")
+    mongo_client[common.MONGO_COLL_NAME]["alex.notes"].insert_one(
+        {
+            "content": content,
+            "date": common.to_utc_datetime(),
+        }
+    )
+    await send_message_cb(f'note "{content}"')
+
+
+# def _rand(length, code):
+#     d = {}
+#     for _s in [string.ascii_lowercase, string.ascii_uppercase, string.digits]:
+#         for x in _s:
+#             d[x] = _s
+#     s = set()
+#     for x in code:
+#         s.add(d[x])
+#     s = "".join(s)
+#     return "".join(random.choices(s, k=length))
+
+
+# def rand(content, send_message_cb=None, mongo_client=None):
+#     length, code = re.split(r"\s+", content)
+#     send_message_cb(f"`{_rand(int(length),code)}`", parse_mode="Markdown")
+
+# class ProcessCommand:
+#     def __init__(self, chat_id, mongo_url, bot, commands={}):
+#         self._chat_id = chat_id
+#         self._bot = bot
+#         self._mongo_client = pymongo.MongoClient(mongo_url)
+#         self._mongo_url = mongo_url
+#         self._commands = commands
+
+#     def __call__(self, update, context):
+#         chat_id = update.effective_message.chat_id
+#         _now = datetime.now()
+
+#         if chat_id != self._chat_id:
+#             logging.warning(
+#                 f"spurious message {update.message} from {chat_id} ==> ignore"
+#             )
+#             return
+
+#         try:
+#             text = update.message.text.strip()
+#             for command, callback in self._commands.items():
+#                 if text.startswith(f"/{command}"):
+#                     stripped = text[len(command) + 1 :].strip()
+#                     callback(
+#                         stripped,
+#                         send_message_cb=self._send_message,
+#                         mongo_client=self._mongo_client,
+#                     )
+#                     return
+#             if text.startswith("/"):
+#                 cmd, *_ = re.split(r"\s+", text)
+#                 raise Exception(f"unknown command {cmd}")
+#             #                logging.error(f"unknown command {text}")
+#             #                return
+#             logging.warning(f'unmatched message "{text}" ==> use default handler')
+#             self._commands[None](
+#                 text,
+#                 send_message_cb=self._send_message,
+#                 mongo_client=self._mongo_client,
+#             )
+#         except Exception as e:
+#             # FIXME: is catch-all catcher inappropriate here?
+#             self._send_message(f"exception: ``` {e}```", parse_mode="Markdown")
+#             raise e
+
+#     def _send_message(self, text, **kwargs):
+#         mess = self._bot.sendMessage(chat_id=self._chat_id, text=text, **kwargs)
