@@ -41,3 +41,8 @@ uvicorn
 fastapi
 Flask[async]
 python-telegram-bot
+pandas
+numpy
+Jinja2
+python-dateutil
+click

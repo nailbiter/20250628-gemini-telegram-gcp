@@ -142,7 +142,7 @@ _GSTASKS_TAGS = {
 # #     pass
 
 
-def ttask(
+async def ttask(
     content: str,
     send_message_cb: typing.Optional[typing.Callable] = None,
     mongo_client=None,
@@ -167,7 +167,7 @@ def ttask(
         )
         logging.warning(debug_info)
         (_uuid,) = debug_info["uuids"]
-        send_message_cb(
+        await send_message_cb(
             f'log "{content}"\n```\n{kwargs}\n```\n `{_uuid}`', parse_mode="Markdown"
         )
     else:
@@ -177,7 +177,7 @@ def ttask(
                 "date": common.to_utc_datetime(),
             }
         )
-        send_message_cb(f'log "{content}"')
+        await send_message_cb(f'log "{content}"')
 
 
 # # https://www.nhs.uk/common-health-questions/food-and-diet/what-should-my-daily-intake-of-calories-be/

@@ -4,7 +4,7 @@ import logging
 import telegram
 import asyncio
 from fastapi import FastAPI, Request, Response
-from _actor import add_money, add_note, sleepstart, sleepend
+from _actor_exp import ttask
 import functools
 from pymongo import MongoClient
 
@@ -21,10 +21,7 @@ MONGO_URL = os.environ.get("MONGO_URL")
 mongo_client = MongoClient(MONGO_URL) if MONGO_URL else None
 
 COMMANDS = {
-    "/money": add_money,
-    "/note": add_note,
-    "/sleepstart": sleepstart,
-    "/sleepend": sleepend,
+    "/ttask": ttask,
 }
 
 
@@ -70,11 +67,7 @@ async def handle_callback(request: Request):
                 break
 
         if not is_matched:
-            # Formulate the echo message
-            echo_text = f"Button press received from message: '{original_text}'"
-
-            # Send the echo message back to the chat
-            await bot.send_message(chat_id=chat_id, text=echo_text)
+            logging.error(f"no match with {payload}")
 
     except (KeyError, IndexError) as e:
         logging.error(f"Error processing payload, missing key: {e}")
