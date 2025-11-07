@@ -58,8 +58,8 @@ async def handle_callback(request: Request):
                 await cb(
                     text.removeprefix(cmd).strip(),
                     # send_message=functools.partial(bot.send_message, chat_id=chat_id),
-                    send_message_cb=lambda text: bot.send_message(
-                        text=text, chat_id=chat_id
+                    send_message_cb=lambda text, **kwargs: bot.send_message(
+                        text=text, chat_id=chat_id, **kwargs
                     ),
                     mongo_client=mongo_client,
                 )
