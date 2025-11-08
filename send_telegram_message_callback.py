@@ -44,7 +44,11 @@ async def handle_callback(request: Request):
     my_bot = TelegramBotWrapper(
         {"pyas2": "PYAS2_TELEGRAM_TOKEN"}.get(payload.get("channel"), "TELEGRAM_TOKEN")
     )
-    my_bot.chat_id = int(os.environ.get("CHAT_ID"))
+    my_bot.chat_id = int(
+        os.environ.get("CHAT_ID")
+        if payload.get("chat_id") is None
+        else payload.get("chat_id")
+    )
 
     if not my_bot.is_able_to_work:
         logging.error("TELEGRAM_TOKEN not configured.")
