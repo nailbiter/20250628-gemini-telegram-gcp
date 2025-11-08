@@ -39,6 +39,7 @@ async def handle_callback(request: Request):
         payload = await request.json()
     except Exception:
         return Response(content="Invalid JSON payload", status_code=400)
+    logging.info(f"Processing forwarded payload: {payload}")
 
     my_bot = TelegramBotWrapper(
         {"pyas2": "PYAS2_TELEGRAM_TOKEN"}.get(payload.get("channel"), "TELEGRAM_TOKEN")
@@ -48,8 +49,6 @@ async def handle_callback(request: Request):
     if not my_bot.is_able_to_work:
         logging.error("TELEGRAM_TOKEN not configured.")
         return Response(content="Service not configured", status_code=500)
-
-    logging.info(f"Processing forwarded payload: {payload}")
 
     try:
         # Extract the necessary info from the callback_query payload
