@@ -34,7 +34,7 @@ CMD = Template(
     gcloud run deploy {{service_name}} \
   --image gcr.io/api-project-424250507607/py-assistant-bot \
   --service-account "pyassistantbot3-sa@{{project_id}}.iam.gserviceaccount.com" \
-  --set-secrets="TELEGRAM_TOKEN=20250628-telegram-token-alex-gemini-bot:latest,MONGO_URL=mongo-url-gaq:latest,PYASSISTANTBOT_MONGO_URL=mongo-url-s8:latest" \
+  --set-secrets="TELEGRAM_TOKEN=20250628-telegram-token-alex-gemini-bot:latest,MONGO_URL=mongo-url-gaq:latest,PYASSISTANTBOT_MONGO_URL=mongo-url-s8:latest,PYAS2_TELEGRAM_TOKEN=pyas2-telegram-token:latest" \
   --set-env-vars="CHAT_ID={{chat_id}}" \
   --region "us-east1" \
   {% if command=='gunicorn' -%}

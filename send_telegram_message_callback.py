@@ -16,8 +16,6 @@ app = FastAPI()
 
 # TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 # bot = telegram.Bot(token=TELEGRAM_TOKEN) if TELEGRAM_TOKEN else None
-my_bot = TelegramBotWrapper("TELEGRAM_TOKEN")
-my_bot.chat_id = int(os.environ.get("CHAT_ID"))
 
 MONGO_URL = os.environ.get("MONGO_URL")
 mongo_client = MongoClient(MONGO_URL) if MONGO_URL else None
@@ -37,14 +35,19 @@ async def handle_callback(request: Request):
     Handles a callback_query payload forwarded from the dispatcher
     and echoes the original message text.
     """
-    if not my_bot.is_able_to_work:
-        logging.error("TELEGRAM_TOKEN not configured.")
-        return Response(content="Service not configured", status_code=500)
-
     try:
         payload = await request.json()
     except Exception:
         return Response(content="Invalid JSON payload", status_code=400)
+
+    my_bot = TelegramBotWrapper(
+        {"pyas2": "PYAS2_TELEGRAM_TOKEN"}.get(payload.get("channel"), "TELEGRAM_TOKEN")
+    )
+    my_bot.chat_id = int(os.environ.get("CHAT_ID"))
+
+    if not my_bot.is_able_to_work:
+        logging.error("TELEGRAM_TOKEN not configured.")
+        return Response(content="Service not configured", status_code=500)
 
     logging.info(f"Processing forwarded payload: {payload}")
 
