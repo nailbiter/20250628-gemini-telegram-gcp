@@ -240,6 +240,7 @@ async def sleepstart(cat, send_message_cb=None, mongo_client=None):
 
 async def add_note(content, send_message_cb=None, mongo_client=None):
     logging.info(f"content: {content}")
+    assert len(content) > 0
     mongo_client[common.MONGO_COLL_NAME]["alex.notes"].insert_one(
         {
             "content": content,
