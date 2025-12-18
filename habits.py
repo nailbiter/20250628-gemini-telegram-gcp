@@ -117,13 +117,11 @@ class HabitsJob:
 
     # <-- CHANGED: Mark _send_message as an async function and use 'await'
     async def _send_message(self, text, limit: int = 4000, **kwargs):
+        # FIXME: encapsulate in function in `main` (ideal: overhaul from pyas2)
         if len(text) <= limit:
-            await self._bot.send_message(
-                chat_id=self._chat_id, text=text[a : a + limit], **kwargs
-            )
+            await self._bot.send_message(chat_id=self._chat_id, text=text, **kwargs)
         else:
             for a in range(0, len(text), limit):
-                # FIXME: encapsulate in function in `main` (ideal: overhaul from pyas2)
                 await self._bot.send_message(
                     chat_id=self._chat_id,
                     text=text[a : a + limit],
