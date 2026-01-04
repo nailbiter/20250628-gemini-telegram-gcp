@@ -4,7 +4,7 @@ import logging
 import telegram
 import asyncio
 from fastapi import FastAPI, Request, Response
-from _actor_exp import ttask
+from _actor_exp import ttask, call_cloud_run
 import functools
 from pymongo import MongoClient
 
