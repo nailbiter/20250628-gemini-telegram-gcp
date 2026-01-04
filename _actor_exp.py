@@ -41,6 +41,28 @@ import typing
 MockClickContext = collections.namedtuple("MockClickContext", "obj", defaults=[{}])
 
 
+async def call_cloud_run(
+    text: str, send_message_cb: typing.Callable = None, mongo_client=None
+):
+    logger = get_configured_logger("call_cloud_run")
+    assert send_message_cb is not None
+    assert mongo_client is not None
+
+    text = text.strip()
+    df_functions = pd.DataFrame(
+        mongo_client["logistics"]["20260102-call-cloud-run-config"].find()
+    )
+
+    if text == "":
+        await send_message_cb(df_functions.to_string())
+        return
+
+    function_to_call, rest = text.split(" ", 2)
+    logger.info(dict(function_to_call=function_to_call, rest=rest))
+
+    await send_message_cb(f"called `{text}`")
+
+
 async def add_money(
     text: str, send_message_cb: typing.Callable = None, mongo_client=None
 ):

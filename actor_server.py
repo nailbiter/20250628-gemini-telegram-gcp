@@ -25,7 +25,6 @@ COMMANDS = {
     "/note": add_note,
     "/sleepstart": sleepstart,
     "/sleepend": sleepend,
-    "/call": call_cloud_run,
 }
 
 

@@ -22,6 +22,7 @@ mongo_client = MongoClient(MONGO_URL) if MONGO_URL else None
 
 COMMANDS = {
     "/ttask": ttask,
+    "/call": call_cloud_run,
 }
 
 
