@@ -39,6 +39,7 @@ from alex_leontiev_toolbox_python.utils.logging_helpers import make_log_format
 
 import common
 import common.simple_math_eval
+from common.call_cloud_run import call_cloud_run as __call_cloud_run__
 from _gstasks import real_add, setup_ctx_obj
 from common import date_to_grid, spl
 
@@ -66,10 +67,14 @@ async def call_cloud_run(
         await send_message_cb(df_functions.to_string())
         return
 
-    function_to_call, rest = text.split(" ", 2)
+    function_to_call, *rest = text.split(" ", 1)
+    rest = None if len(rest) == 0 else rest[0]
     logger.info(dict(function_to_call=function_to_call, rest=rest))
+    (url,) = df_functions.loc[df_functions["name"].eq(function_to_call), "url"]
+    logger.info(dict(url=url))
+    __call_cloud_run__(url, rest)
 
-    await send_message_cb(f"called `{text}`")
+    await send_message_cb(f"called `{function_to_call}`")
 
 
 async def add_money(
