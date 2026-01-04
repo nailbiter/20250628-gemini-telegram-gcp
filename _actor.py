@@ -34,15 +34,6 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 import pymongo
-from alex_leontiev_toolbox_python.utils.logging_helpers import (
-    get_configured_logger as __get_configured_logger__,
-    make_log_format,
-)
-
-get_configured_logger = functools.partial(
-    __get_configured_logger__,
-    log_format="%(asctime)s - %(name)s - %(levelname)s - Line:%(lineno)d - %(message)s",
-)
 
 import common
 import common.simple_math_eval

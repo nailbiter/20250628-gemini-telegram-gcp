@@ -17,26 +17,35 @@ ORGANIZATION:
     REVISION: ---
 
 ==============================================================================="""
-import common
-import re
-from datetime import datetime, timedelta
-import subprocess
-import pymongo
-import common
-from common import spl, date_to_grid
-import common.simple_math_eval
+import collections
+import functools
+import logging
 
 # import heartbeat_time
 import os
-import logging
 import random
+import re
 import string
-import pandas as pd
-
-from _gstasks import setup_ctx_obj, real_add
-import functools
-import collections
+import subprocess
 import typing
+from datetime import datetime, timedelta
+
+import pandas as pd
+import pymongo
+from alex_leontiev_toolbox_python.utils.logging_helpers import (
+    get_configured_logger as __get_configured_logger__,
+)
+from alex_leontiev_toolbox_python.utils.logging_helpers import make_log_format
+
+import common
+import common.simple_math_eval
+from _gstasks import real_add, setup_ctx_obj
+from common import date_to_grid, spl
+
+get_configured_logger = functools.partial(
+    __get_configured_logger__,
+    log_format="%(asctime)s - %(name)s - %(levelname)s - Line:%(lineno)d - %(message)s",
+)
 
 MockClickContext = collections.namedtuple("MockClickContext", "obj", defaults=[{}])
 
