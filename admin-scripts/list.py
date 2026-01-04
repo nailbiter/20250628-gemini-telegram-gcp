@@ -16,6 +16,7 @@ import tqdm
 from google.cloud import run_v2
 from google.api_core import exceptions
 import pandas as pd
+from google.cloud import secretmanager
 
 
 # Configure basic logging
@@ -118,6 +119,68 @@ def get_images(project_id: str) -> pd.DataFrame:
         logging.error(out)
     df_images = pd.DataFrame(out)
     return df_images
+
+
+@list_.command()
+@click.option(
+    "--project-id",
+    required=True,
+    envvar="GCLOUD_PROJECT",
+    help="Your GCP project ID. Can be set via GCLOUD_PROJECT env var.",
+)
+def secrets(project_id):
+    return list_and_count_secret_versions(project_id)
+
+
+def list_and_count_secret_versions(project_id):
+    client = secretmanager.SecretManagerServiceClient()
+    parent = f"projects/{project_id}"
+
+    # Counters
+    billable_count = 0
+    free_count = 0
+
+    print(f"{'SECRET NAME':<40} | {'VERSION':<10} | {'STATE':<10}")
+    print("-" * 65)
+
+    # 1. List all Secrets
+    for secret in client.list_secrets(request={"parent": parent}):
+        secret_name = secret.name.split("/")[-1]
+
+        # 2. List all Versions for each Secret
+        versions = client.list_secret_versions(request={"parent": secret.name})
+
+        for version in versions:
+            version_id = version.name.split("/")[-1]
+            state = version.state.name
+
+            # ENABLED (1) and DISABLED (2) are billable. DESTROYED (3) is free.
+            if state in ["ENABLED", "DISABLED"]:
+                billable_count += 1
+                is_billable = "($)"
+            else:
+                free_count += 1
+                is_billable = "(Free)"
+
+            print(f"{secret_name:<40} | {version_id:<10} | {state} {is_billable}")
+
+    print("-" * 65)
+    print(f"Total Billable Versions (Enabled + Disabled): {billable_count}")
+    print(f"Total Free Versions (Destroyed):            {free_count}")
+
+    if billable_count > 6:
+        print(f"\n⚠️  ALERT: You have {billable_count} billable versions.")
+        print(
+            f"   The free tier covers 6. You are paying for {billable_count - 6} extra version(s)."
+        )
+    else:
+        print(f"\n✅ You are within the Free Tier (6 versions or fewer).")
+
+
+# Replace with your actual Project ID
+# You can find it by running: gcloud config get-value project
+project_id = "YOUR_PROJECT_ID_HERE"
+list_and_count_secret_versions(project_id)
 
 
 @list_.command()

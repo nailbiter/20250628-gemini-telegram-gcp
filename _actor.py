@@ -17,28 +17,60 @@ ORGANIZATION:
     REVISION: ---
 
 ==============================================================================="""
-import common
-import re
-from datetime import datetime, timedelta
-import subprocess
-import pymongo
-import common
-from common import spl, date_to_grid
-import common.simple_math_eval
-
-# import heartbeat_time
-import os
-import logging
-import random
-import string
-import pandas as pd
+import collections
 
 # from gstasks import setup_ctx_obj, real_add
 import functools
-import collections
+import logging
+
+# import heartbeat_time
+import os
+import random
+import re
+import string
+import subprocess
 import typing
+from datetime import datetime, timedelta
+
+import pandas as pd
+import pymongo
+from alex_leontiev_toolbox_python.utils.logging_helpers import (
+    get_configured_logger as __get_configured_logger__,
+    make_log_format,
+)
+
+get_configured_logger = functools.partial(
+    __get_configured_logger__,
+    log_format="%(asctime)s - %(name)s - %(levelname)s - Line:%(lineno)d - %(message)s",
+)
+
+import common
+import common.simple_math_eval
+from common import date_to_grid, spl
 
 MockClickContext = collections.namedtuple("MockClickContext", "obj", defaults=[{}])
+
+
+async def call_cloud_run(
+    text: str, send_message_cb: typing.Callable = None, mongo_client=None
+):
+    logger = get_configured_logger("call_cloud_run")
+    assert send_message_cb is not None
+    assert mongo_client is not None
+
+    text = text.strip()
+    df_functions = pd.DataFrame(
+        mongo_client["logistics"]["20260102-call-cloud-run-config"].find()
+    )
+
+    if text == "":
+        await send_message_cb(df_functions.to_string())
+        return
+
+    function_to_call, rest = text.split(" ", 2)
+    logger.info(dict(function_to_call=function_to_call, rest=rest))
+
+    await send_message_cb(f"called `{text}`")
 
 
 async def add_money(
