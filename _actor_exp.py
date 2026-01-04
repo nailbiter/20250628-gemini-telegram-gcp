@@ -57,7 +57,7 @@ async def call_cloud_run(
     assert send_message_cb is not None
     assert mongo_client is not None
 
-    text = text.strip()
+    text = text.strip().removeprefix("/call").strip()
     df_functions = pd.DataFrame(
         mongo_client["logistics"]["20260102-call-cloud-run-config"].find()
     )
