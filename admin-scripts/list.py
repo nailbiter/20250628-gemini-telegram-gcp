@@ -145,7 +145,11 @@ def secrets(project_id):
         ec, out = subprocess.getstatusoutput(cmd)
         assert ec == 0, (cmd, ec, out)
         dfs[secret] = pd.read_json(io.StringIO(out))
-    click.echo(pd.concat(dfs))
+    df = pd.concat(dfs)
+    click.echo(df)
+    logger.info(df["state"].value_counts())
+    if df["state"].eq("ENABLED").sum() > 6:
+        logger.warning(df["state"].eq("ENABLED").sum())
 
 
 def list_and_count_secret_versions(project_id):
