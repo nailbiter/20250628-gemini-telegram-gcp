@@ -11,12 +11,11 @@ import click
 import logging
 import subprocess
 import json
+import io
 
 import tqdm
-from google.cloud import run_v2
 from google.api_core import exceptions
 import pandas as pd
-from google.cloud import secretmanager
 
 
 # Configure basic logging
@@ -129,10 +128,29 @@ def get_images(project_id: str) -> pd.DataFrame:
     help="Your GCP project ID. Can be set via GCLOUD_PROJECT env var.",
 )
 def secrets(project_id):
-    return list_and_count_secret_versions(project_id)
+    # return list_and_count_secret_versions(project_id)
+    logger = logging
+
+    ec, out = subprocess.getstatusoutput("gcloud secrets list --format=json")
+    assert ec == 0
+    logger.debug(out)
+    df_secrets = pd.read_json(io.StringIO(out))
+    logger.info(df_secrets)
+    logger.debug(df_secrets.columns)
+
+    dfs = {}
+    for secret in tqdm.tqdm(df_secrets["name"], desc="secrets"):
+        ##--format="table(name, state, create_time)"
+        cmd = f"""gcloud secrets versions list {secret} --format=json"""
+        ec, out = subprocess.getstatusoutput(cmd)
+        assert ec == 0, (cmd, ec, out)
+        dfs[secret] = pd.read_json(io.StringIO(out))
+    click.echo(pd.concat(dfs))
 
 
 def list_and_count_secret_versions(project_id):
+    from google.cloud import secretmanager
+
     client = secretmanager.SecretManagerServiceClient()
     parent = f"projects/{project_id}"
 
@@ -177,12 +195,6 @@ def list_and_count_secret_versions(project_id):
         print(f"\n✅ You are within the Free Tier (6 versions or fewer).")
 
 
-# Replace with your actual Project ID
-# You can find it by running: gcloud config get-value project
-project_id = "YOUR_PROJECT_ID_HERE"
-list_and_count_secret_versions(project_id)
-
-
 @list_.command()
 @click.option(
     "--project-id",
@@ -220,6 +232,8 @@ def services(project_id, regions):
 def get_services(
     project_id: str, regions: list[str], is_loud: bool = True
 ) -> pd.DataFrame:
+    from google.cloud import run_v2
+
     services_client = run_v2.ServicesClient()
     # --- NEW: Client for fetching revision details ---
     revisions_client = run_v2.RevisionsClient()
