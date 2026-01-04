@@ -17,60 +17,28 @@ ORGANIZATION:
     REVISION: ---
 
 ==============================================================================="""
-import collections
-
-# from gstasks import setup_ctx_obj, real_add
-import functools
-import logging
+import common
+import re
+from datetime import datetime, timedelta
+import subprocess
+import pymongo
+import common
+from common import spl, date_to_grid
+import common.simple_math_eval
 
 # import heartbeat_time
 import os
+import logging
 import random
-import re
 import string
-import subprocess
-import typing
-from datetime import datetime, timedelta
-
 import pandas as pd
-import pymongo
-from alex_leontiev_toolbox_python.utils.logging_helpers import (
-    get_configured_logger as __get_configured_logger__,
-    make_log_format,
-)
 
-get_configured_logger = functools.partial(
-    __get_configured_logger__,
-    log_format="%(asctime)s - %(name)s - %(levelname)s - Line:%(lineno)d - %(message)s",
-)
-
-import common
-import common.simple_math_eval
-from common import date_to_grid, spl
+from _gstasks import setup_ctx_obj, real_add
+import functools
+import collections
+import typing
 
 MockClickContext = collections.namedtuple("MockClickContext", "obj", defaults=[{}])
-
-
-async def call_cloud_run(
-    text: str, send_message_cb: typing.Callable = None, mongo_client=None
-):
-    logger = get_configured_logger("call_cloud_run")
-    assert send_message_cb is not None
-    assert mongo_client is not None
-
-    text = text.strip()
-    df_functions = pd.DataFrame(
-        mongo_client["logistics"]["20260102-call-cloud-run-config"].find()
-    )
-
-    if text == "":
-        await send_message_cb(df_functions.to_string())
-        return
-
-    function_to_call, rest = text.split(" ", 2)
-    logger.info(dict(function_to_call=function_to_call, rest=rest))
-
-    await send_message_cb(f"called `{text}`")
 
 
 async def add_money(
@@ -159,56 +127,57 @@ async def sleepend(_, send_message_cb=None, mongo_client=None):
     )
 
 
-# _GSTASKS_TAGS = {
-#     # (kwargs: dict, ) -> dict
-#     "tomorrow": lambda _: dict(
-#         scheduled_date=date_to_grid(datetime.now() + timedelta(days=1), grid_hours=True)
-#     ),
-#     "findout": lambda kwargs: dict(
-#         tags=[*kwargs.get("tags", []), "findout"], create_new_tag=True
-#     ),
-# }
+_GSTASKS_TAGS = {
+    # (kwargs: dict, ) -> dict
+    "tomorrow": lambda _: dict(
+        scheduled_date=date_to_grid(datetime.now() + timedelta(days=1), grid_hours=True)
+    ),
+    "findout": lambda kwargs: dict(
+        tags=[*kwargs.get("tags", []), "findout"], create_new_tag=True
+    ),
+}
 
 
 # # def _add_kwarg_tomorrow(kwargs: dict) -> None:
 # #     pass
 
 
-# def ttask(
-#     content: str,
-#     send_message_cb: typing.Optional[typing.Callable] = None,
-#     mongo_client=None,
-# ):
-#     if True:
-#         ctx = MockClickContext()
-#         setup_ctx_obj(ctx, mongo_url=os.environ["PYASSISTANTBOT_MONGO_URL"], list_id="")
-#         kwargs = dict(URL=None)
-#         for k, cb in _GSTASKS_TAGS.items():
-#             if content.find(f"#{k}") >= 0:
-#                 logging.warning((f"#{k}", content))
-#                 kwargs = {**kwargs, **cb(kwargs)}
-#         debug_info = real_add(
-#             ctx,
-#             names=[content],
-#             # scheduled_date=date_to_grid(
-#             #     datetime.now() + timedelta(days=1), grid_hours=True
-#             # ),
-#             # URL=None,
-#             **kwargs,
-#         )
-#         logging.warning(debug_info)
-#         (_uuid,) = debug_info["uuids"]
-#         send_message_cb(
-#             f'log "{content}"\n```\n{kwargs}\n```\n `{_uuid}`', parse_mode="Markdown"
-#         )
-#     else:
-#         mongo_client[common.MONGO_COLL_NAME]["alex.ttask"].insert_one(
-#             {
-#                 "content": content,
-#                 "date": common.to_utc_datetime(),
-#             }
-#         )
-#         send_message_cb(f'log "{content}"')
+async def ttask(
+    content: str,
+    send_message_cb: typing.Optional[typing.Callable] = None,
+    mongo_client=None,
+    is_sophisticated: bool = True,
+):
+    if True:
+        ctx = MockClickContext()
+        setup_ctx_obj(ctx, mongo_url=os.environ["PYASSISTANTBOT_MONGO_URL"], list_id="")
+        kwargs = dict(URL=None)
+        for k, cb in _GSTASKS_TAGS.items():
+            if content.find(f"#{k}") >= 0:
+                logging.warning((f"#{k}", content))
+                kwargs = {**kwargs, **cb(kwargs)}
+        debug_info = real_add(
+            ctx,
+            names=[content],
+            # scheduled_date=date_to_grid(
+            #     datetime.now() + timedelta(days=1), grid_hours=True
+            # ),
+            # URL=None,
+            **kwargs,
+        )
+        logging.warning(debug_info)
+        (_uuid,) = debug_info["uuids"]
+        await send_message_cb(
+            f'log "{content}"\n```\n{kwargs}\n```\n `{_uuid}`', parse_mode="Markdown"
+        )
+    else:
+        mongo_client[common.MONGO_COLL_NAME]["alex.ttask"].insert_one(
+            {
+                "content": content,
+                "date": common.to_utc_datetime(),
+            }
+        )
+        await send_message_cb(f'log "{content}"')
 
 
 # # https://www.nhs.uk/common-health-questions/food-and-diet/what-should-my-daily-intake-of-calories-be/
@@ -272,7 +241,6 @@ async def sleepstart(cat, send_message_cb=None, mongo_client=None):
 
 async def add_note(content, send_message_cb=None, mongo_client=None):
     logging.info(f"content: {content}")
-    assert len(content) > 0
     mongo_client[common.MONGO_COLL_NAME]["alex.notes"].insert_one(
         {
             "content": content,

@@ -28,14 +28,15 @@ from alex_leontiev_toolbox_python.utils.logging_helpers import get_configured_lo
 
 class TelegramBotWrapper:
     def __init__(self, token_envvar: str):
-        TELEGRAM_TOKEN = os.environ.get(token_envvar)
-        self.bot = telegram.Bot(token=TELEGRAM_TOKEN) if TELEGRAM_TOKEN else None
-        self._chat_id: typing.Optional[str] = None
         self._logger = get_configured_logger(
             self.__class__.__name__,
             level="INFO",
             log_format="%(asctime)s - %(levelname)s - %(message)s",
         )
+        self._logger.info(f"getting token envvar from `{token_envvar}`")
+        TELEGRAM_TOKEN = os.environ.get(token_envvar)
+        self.bot = telegram.Bot(token=TELEGRAM_TOKEN) if TELEGRAM_TOKEN else None
+        self._chat_id: typing.Optional[str] = None
 
     @property
     def is_able_to_work(self):

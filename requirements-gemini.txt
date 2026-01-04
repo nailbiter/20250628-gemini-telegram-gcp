@@ -6,3 +6,7 @@ google-generativeai
 #a2wsgi
 fastapi
 click
+pandas
+numpy
+Jinja2
+python-dateutil

@@ -62,7 +62,7 @@ def images(project_id, annotate, regions, purge, dry_run):
         logging.info(df_images["is_in_use"].value_counts())
 
     df_images.to_parquet("/tmp/df_images.prq")
-    click.echo(df_images)
+    click.echo(df_images.to_string())
 
     if purge:
         if "is_in_use" not in df_images.columns:
