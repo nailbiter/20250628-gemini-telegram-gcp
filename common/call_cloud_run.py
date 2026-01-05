@@ -23,6 +23,7 @@ import os
 import tempfile
 import typing
 from datetime import datetime
+import functools
 
 # import nbconvert
 # import papermill
@@ -30,6 +31,15 @@ import requests
 
 # from fastapi import FastAPI, HTTPException, Response
 # from google.cloud import storage
+from alex_leontiev_toolbox_python.utils.logging_helpers import (
+    get_configured_logger as __get_configured_logger__,
+)
+from alex_leontiev_toolbox_python.utils.logging_helpers import make_log_format
+
+logger = __get_configured_logger__(
+    "call_cloud_run",
+    log_format="%(asctime)s - %(name)s - %(levelname)s - Line:%(lineno)d - %(message)s",
+)
 
 
 def get_id_token(audience_url: str) -> typing.Optional[str]:
@@ -41,13 +51,14 @@ def get_id_token(audience_url: str) -> typing.Optional[str]:
         token_response.raise_for_status()  # Raise an exception for bad status codes
         return token_response.text
     except requests.exceptions.RequestException as e:
-        logging.error(f"Failed to fetch ID token for {audience_url}: {e}")
+        logger.error(f"Failed to fetch ID token for {audience_url}: {e}")
         return None
 
 
 def call_cloud_run(url: str, text: typing.Optional[str] = None) -> dict:
-    logging.info(f"Calling notification service at {url}...")
+    logger.info(f"Calling notification service at {url}...")
     id_token = get_id_token(url)
+    logger.info(f"got id token for {url}")
 
     # message_text = f"{public_url} #weeklyReport"
     # if not github_notebook_used:
@@ -56,7 +67,7 @@ def call_cloud_run(url: str, text: typing.Optional[str] = None) -> dict:
     #     message_text += " (Note: Used latest notebook from GitHub)"
 
     if not id_token:
-        logging.error("Could not get ID token. Skipping notification.")
+        logger.error("Could not get ID token. Skipping notification.")
         # Still return success, as the main task (report gen) worked
         return {
             "status": "failure",
@@ -70,11 +81,11 @@ def call_cloud_run(url: str, text: typing.Optional[str] = None) -> dict:
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()  # Check for HTTP errors
 
-        logging.info(
+        logger.info(
             f"Notification service called successfully. Status: {response.status_code}"
         )
     except requests.exceptions.RequestException as e:
-        logging.error(f"Failed to call notification service: {e}")
+        logger.error(f"Failed to call notification service: {e}")
         # Log the error but don't fail the whole job
         return {
             "status": "failure",
