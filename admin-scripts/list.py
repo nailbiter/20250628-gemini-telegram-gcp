@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 ## note: run
 # ```
@@ -62,7 +62,7 @@ def images(project_id, annotate, regions, purge, dry_run):
         logging.info(df_images["is_in_use"].value_counts())
 
     df_images.to_parquet("/tmp/df_images.prq")
-    click.echo(df_images)
+    click.echo(df_images.to_string())
 
     if purge:
         if "is_in_use" not in df_images.columns:
@@ -145,7 +145,11 @@ def secrets(project_id):
         ec, out = subprocess.getstatusoutput(cmd)
         assert ec == 0, (cmd, ec, out)
         dfs[secret] = pd.read_json(io.StringIO(out))
-    click.echo(pd.concat(dfs))
+    df = pd.concat(dfs)
+    click.echo(df)
+    logger.info(df["state"].value_counts())
+    if df["state"].eq("ENABLED").sum() > 6:
+        logger.warning(df["state"].eq("ENABLED").sum())
 
 
 def list_and_count_secret_versions(project_id):
