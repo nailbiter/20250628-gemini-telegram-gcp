@@ -15,3 +15,15 @@ gcloud builds submit --tag gcr.io/$GCLOUD_PROJECT/py-assistant-bot
 ```
 ./admin-scripts/deploy-functions.py -n time-react-service-experimental -s actor_server_experimental.py -C uvicorn
 ```
+
+## housekeeping
+
+### cleanup
+
+to see what will be removed use
+
+```
+./admin-scripts/list.py images -r us-east1 -AP
+```
+
+add `-F` for force

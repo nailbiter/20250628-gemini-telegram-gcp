@@ -38,6 +38,7 @@ import uuid
 from os import path
 import pandas as pd
 import sys
+import numpy as np
 
 TIME_CATS = [
     "sleeping",
@@ -317,3 +318,8 @@ def date_to_grid(dt: datetime, grid_hours: bool = False) -> datetime:
         kw["hour"] = 0
         kw["minute"] = 0
     return dt.replace(**kw)
+
+
+def is_missing(x) -> bool:
+    "suggested by Gemini"
+    return np.ndim(x) == 0 and pd.isna(x)
