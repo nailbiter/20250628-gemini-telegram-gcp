@@ -20,3 +20,10 @@ gcloud builds submit --tag gcr.io/$GCLOUD_PROJECT/py-assistant-bot
 
 ### cleanup
 
+to see what will be removed use
+
+```
+./admin-scripts/list.py images -r us-east1 -AP
+```
+
+add `-F` for force

@@ -54,6 +54,7 @@ from dateutil.relativedelta import relativedelta
 import pytz
 import common as _common
 import copy
+from common import is_missing
 
 
 _LOCAL_TZ_NAME = "Asia/Tokyo"
@@ -599,3 +600,102 @@ def real_add(
         os.system(post_hook)
 
     return debug_info
+
+
+_NONE_CLICK_VALUE = "NONE"
+
+
+def real_edit(
+    ctx,
+    uuid_text: typing.Tuple[str] = tuple(),
+    index: list[int] = [],
+    action_comment: typing.Optional[str] = None,
+    uuid_list_file=None,
+    tag_operation: str = "symmetric_difference",  # FIXME: sync with above
+    create_new_tag: bool = False,
+    string_set_mode: str = "set",  # FIXME: sync with above
+    post_hook=None,
+    logger: typing.Optional = None,
+    **kwargs,
+) -> None:
+    # taken from https://stackoverflow.com/a/13514318
+    this_function_name = cast(types.FrameType, inspect.currentframe()).f_code.co_name
+    logger = (
+        logging.getLogger(__name__).getChild(this_function_name)
+        if logger is None
+        else logger
+    )
+    logging.warning(uuid_text)
+    uuid_text = list(
+        map(
+            # functools.partial(_fetch_uuid, uuid_cache_db=ctx.obj.get("uuid_cache_db")),
+            lambda x: x,
+            uuid_text,
+        )
+    )
+
+    if uuid_list_file is not None:
+        with click.open_file(uuid_list_file) as f:
+            l = f.readlines()
+        uuid_text += list(filter(lambda x: len(x) > 0, map(lambda s: s.strip(), l)))
+
+    task_list = ctx.obj["task_list"]
+    _process_tag = TagProcessor(
+        task_list.get_coll("tags"),
+        create_new_tag=create_new_tag,
+        flag_name="--create-new-tag",
+    )
+
+    _PROCESSORS = {
+        "scheduled_date": lambda s: None
+        if s == _NONE_CLICK_VALUE
+        else _common.parse_cmdline_datetime(s),
+        "due": lambda s: None
+        if s == _NONE_CLICK_VALUE
+        else _common.parse_cmdline_datetime(s),
+        "tags": lambda tags: {_process_tag(tag) for tag in tags},
+    }
+    _UNSET = "***UNSET***"
+    for k, v in _PROCESSORS.items():
+        if kwargs[k] is not None:
+            if kwargs[k] == _NONE_CLICK_VALUE:
+                kwargs[k] = _UNSET
+            else:
+                kwargs[k] = v(kwargs[k])
+
+    for _uuid_text, _index in [(x, None) for x in uuid_text] + [
+        (None, x) for x in index
+    ]:
+        r, idx = task_list.get_task(uuid_text=_uuid_text, index=_index)
+        logger.debug((r, idx))
+        for k, v in kwargs.items():
+            if v is not None:
+                if k == "tags":
+                    r["tags"] = sorted(
+                        getattr(set, tag_operation)(
+                            set([] if is_missing(r["tags"]) else r["tags"]),
+                            set([] if is_missing(kwargs["tags"]) else kwargs["tags"]),
+                        )
+                    )
+                elif k in ["name", "comment"]:
+                    if v == _UNSET:
+                        r[k] = None
+                    elif string_set_mode == "set":
+                        r[k] = v
+                    elif string_set_mode == "rappend":
+                        r[k] += v
+                    else:
+                        raise NotImplementedError(dict(string_set_mode=string_set_mode))
+                    # r[k] = None if v == _UNSET else v
+                elif k == "label":
+                    r["label"] = {
+                        **ifnull(r.get("label", {}), {}),
+                        **{kk: vv for kk, vv in v},
+                    }
+                else:
+                    r[k] = None if v == _UNSET else v
+        task_list.insert_or_replace_record(r, index=idx, action_comment=action_comment)
+
+    if post_hook is not None:
+        logging.warning(f'executing post_hook "{post_hook}"')
+        os.system(post_hook)

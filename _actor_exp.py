@@ -40,7 +40,7 @@ from alex_leontiev_toolbox_python.utils.logging_helpers import make_log_format
 import common
 import common.simple_math_eval
 from common.call_cloud_run import call_cloud_run as __call_cloud_run__
-from _gstasks import real_add, setup_ctx_obj
+from _gstasks import real_add, setup_ctx_obj, real_edit
 from common import date_to_grid, spl
 
 get_configured_logger = functools.partial(
@@ -168,6 +168,9 @@ _GSTASKS_TAGS = {
     "tomorrow": lambda _: dict(
         scheduled_date=date_to_grid(datetime.now() + timedelta(days=1), grid_hours=True)
     ),
+    "today": lambda _: dict(
+        scheduled_date=date_to_grid(datetime.now() + timedelta(days=0), grid_hours=True)
+    ),
     "findout": lambda kwargs: dict(
         tags=[*kwargs.get("tags", []), "findout"], create_new_tag=True
     ),
@@ -177,6 +180,34 @@ _GSTASKS_TAGS = {
 # # def _add_kwarg_tomorrow(kwargs: dict) -> None:
 # #     pass
 
+STATUS_DONE = "DONE"
+
+
+async def ttaskdone(
+    content: str,
+    send_message_cb: typing.Optional[typing.Callable] = None,
+    mongo_client=None,
+    is_sophisticated: bool = True,
+):
+    logger = get_configured_logger("ttaskdone")
+    ctx = MockClickContext()
+    setup_ctx_obj(ctx, mongo_url=os.environ["PYASSISTANTBOT_MONGO_URL"], list_id="")
+
+    uuid, *rest = content.strip().split(" ", 1)
+    logger.debug(dict(uuid=uuid, rest=rest))
+    (rest,) = [None] if len(rest) == 0 else rest
+    real_edit(
+        ctx,
+        uuid_text=[uuid],
+        status=STATUS_DONE,
+        action_comment=rest,
+        logger=logger,
+        scheduled_date=None,
+        due=None,
+        tags=[],
+    )
+    await send_message_cb(f"marked `{uuid}` as {STATUS_DONE}", parse_mode="Markdown")
+
 
 async def ttask(
     content: str,
@@ -184,36 +215,38 @@ async def ttask(
     mongo_client=None,
     is_sophisticated: bool = True,
 ):
-    if True:
-        ctx = MockClickContext()
-        setup_ctx_obj(ctx, mongo_url=os.environ["PYASSISTANTBOT_MONGO_URL"], list_id="")
-        kwargs = dict(URL=None)
-        for k, cb in _GSTASKS_TAGS.items():
-            if content.find(f"#{k}") >= 0:
-                logging.warning((f"#{k}", content))
-                kwargs = {**kwargs, **cb(kwargs)}
-        debug_info = real_add(
-            ctx,
-            names=[content],
-            # scheduled_date=date_to_grid(
-            #     datetime.now() + timedelta(days=1), grid_hours=True
-            # ),
-            # URL=None,
-            **kwargs,
-        )
-        logging.warning(debug_info)
-        (_uuid,) = debug_info["uuids"]
-        await send_message_cb(
-            f'log "{content}"\n```\n{kwargs}\n```\n `{_uuid}`', parse_mode="Markdown"
-        )
-    else:
-        mongo_client[common.MONGO_COLL_NAME]["alex.ttask"].insert_one(
-            {
-                "content": content,
-                "date": common.to_utc_datetime(),
-            }
-        )
-        await send_message_cb(f'log "{content}"')
+    ctx = MockClickContext()
+    setup_ctx_obj(ctx, mongo_url=os.environ["PYASSISTANTBOT_MONGO_URL"], list_id="")
+    kwargs = dict(URL=None)
+
+    for k, cb in _GSTASKS_TAGS.items():
+        if content.find(f"#{k}") >= 0:
+            logging.warning((f"#{k}", content))
+            kwargs = {**kwargs, **cb(kwargs)}
+
+    debug_info = real_add(
+        ctx,
+        names=[content],
+        # scheduled_date=date_to_grid(
+        #     datetime.now() + timedelta(days=1), grid_hours=True
+        # ),
+        # URL=None,
+        **kwargs,
+    )
+    logging.warning(debug_info)
+    (_uuid,) = debug_info["uuids"]
+    await send_message_cb(
+        f'log "{content}"\n```\n{kwargs}\n```\n `{_uuid}`', parse_mode="Markdown"
+    )
+
+    ## legacy with `ttask` database
+    # mongo_client[common.MONGO_COLL_NAME]["alex.ttask"].insert_one(
+    #     {
+    #         "content": content,
+    #         "date": common.to_utc_datetime(),
+    #     }
+    # )
+    # await send_message_cb(f'log "{content}"')
 
 
 # # https://www.nhs.uk/common-health-questions/food-and-diet/what-should-my-daily-intake-of-calories-be/
