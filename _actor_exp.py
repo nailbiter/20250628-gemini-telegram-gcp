@@ -187,7 +187,6 @@ async def ttaskdone(
     content: str,
     send_message_cb: typing.Optional[typing.Callable] = None,
     mongo_client=None,
-    is_sophisticated: bool = True,
 ):
     logger = get_configured_logger("ttaskdone")
     ctx = MockClickContext()
