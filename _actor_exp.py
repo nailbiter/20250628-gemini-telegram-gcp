@@ -163,27 +163,13 @@ async def sleepend(_, send_message_cb=None, mongo_client=None):
     )
 
 
-_GSTASKS_TAGS = {
-    # (kwargs: dict, ) -> dict
-    "tomorrow": lambda _: dict(
-        scheduled_date=date_to_grid(datetime.now() + timedelta(days=1), grid_hours=True)
-    ),
-    "today": lambda _: dict(
-        scheduled_date=date_to_grid(datetime.now() + timedelta(days=0), grid_hours=True)
-    ),
-    "findout": lambda kwargs: dict(
-        tags=[*kwargs.get("tags", []), "findout"], create_new_tag=True
-    ),
-}
-
-
 # # def _add_kwarg_tomorrow(kwargs: dict) -> None:
 # #     pass
 
 STATUS_DONE = "DONE"
 
 
-async def ttaskdone(
+async def taskdone(
     content: str,
     send_message_cb: typing.Optional[typing.Callable] = None,
     mongo_client=None,
@@ -208,7 +194,15 @@ async def ttaskdone(
     await send_message_cb(f"marked `{uuid}` as {STATUS_DONE}", parse_mode="Markdown")
 
 
-async def ttask(
+class _TaskNewLiteralTag:
+    def __init__(self, tag_name: str):
+        self.tag_name = tag_name
+
+    def __call__(self, kwargs: dict) -> dict:
+        return dict(tags=[*kwargs.get("tags", []), self.tag_name], create_new_tag=True)
+
+
+async def tasknew(
     content: str,
     send_message_cb: typing.Optional[typing.Callable] = None,
     mongo_client=None,
@@ -217,6 +211,29 @@ async def ttask(
     ctx = MockClickContext()
     setup_ctx_obj(ctx, mongo_url=os.environ["PYASSISTANTBOT_MONGO_URL"], list_id="")
     kwargs = dict(URL=None)
+    logger = get_configured_logger("ttask")
+
+    _GSTASKS_TAGS = {
+        # (kwargs: dict, ) -> dict
+        "tomorrow": lambda _: dict(
+            scheduled_date=date_to_grid(
+                datetime.now() + timedelta(days=1), grid_hours=True
+            )
+        ),
+        "today": lambda _: dict(
+            scheduled_date=date_to_grid(
+                datetime.now() + timedelta(days=0), grid_hours=True
+            )
+        ),
+        # "findout": lambda kwargs: dict(
+        #     tags=[*kwargs.get("tags", []), "findout"], create_new_tag=True
+        # ),
+        **{
+            r["name"]: _TaskNewLiteralTag(r["name"])
+            for r in mongo_client["logistics"]["20260301-tasknew-smarttags"].find()
+        },
+    }
+    logger.debug(_GSTASKS_TAGS.keys())
 
     for k, cb in _GSTASKS_TAGS.items():
         if content.find(f"#{k}") >= 0:

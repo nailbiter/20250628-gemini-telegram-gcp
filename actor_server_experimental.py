@@ -4,7 +4,7 @@ import logging
 import telegram
 import asyncio
 from fastapi import FastAPI, Request, Response
-from _actor_exp import ttask, call_cloud_run, ttaskdone
+from _actor_exp import tasknew, call_cloud_run, taskdone
 import functools
 from pymongo import MongoClient
 
@@ -21,8 +21,8 @@ MONGO_URL = os.environ.get("MONGO_URL")
 mongo_client = MongoClient(MONGO_URL) if MONGO_URL else None
 
 COMMANDS = {
-    "/ttask": ttask,
-    "/ttaskdone": ttaskdone,
+    "/tasknew": tasknew,
+    "/taskdone": taskdone,
     "/call": call_cloud_run,
 }
 
