@@ -309,7 +309,8 @@ def get_configured_logger(
     return app_logger
 
 
-TARGET_TIMEZONE = "America/New_York"
+# TARGET_TIMEZONE = "America/New_York"
+TARGET_TIMEZONE = "Asia/Tokyo"
 
 
 def date_to_grid(dt: datetime, grid_hours: bool = False) -> datetime:
