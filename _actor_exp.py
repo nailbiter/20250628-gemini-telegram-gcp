@@ -247,6 +247,12 @@ async def tasknew(
             content = content.replace(tag_value, "")
             kwargs = {**kwargs, **cb(kwargs)}
 
+    url_match = re.search(r"https?://\S+", content)
+    if url_match:
+        url = url_match.group(0)
+        content = content.replace(url, "")
+        kwargs["URL"] = url
+
     content = content.strip()
     assert len(content) > 0
 
