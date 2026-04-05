@@ -202,6 +202,20 @@ class _TaskNewLiteralTag:
         return dict(tags=[*kwargs.get("tags", []), self.tag_name], create_new_tag=True)
 
 
+class _TaskNewNextDayTag:
+    def __init__(self, day_index: int):
+        self.day_index = day_index
+
+    def __call__(self, _: dict) -> dict:
+        return dict(
+            scheduled_date=date_to_grid(
+                datetime.now()
+                + timedelta(days=(self.day_index - datetime.now().weekday() - 1) % 7 + 1),
+                grid_hours=True,
+            )
+        )
+
+
 async def tasknew(
     content: str,
     send_message_cb: typing.Optional[typing.Callable] = None,
@@ -230,6 +244,12 @@ async def tasknew(
                 datetime.now() + timedelta(days=0), grid_hours=True
             )
         ),
+        **{
+            f"next{day}": _TaskNewNextDayTag(idx)
+            for idx, day in enumerate(
+                ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+            )
+        },
         # "findout": lambda kwargs: dict(
         #     tags=[*kwargs.get("tags", []), "findout"], create_new_tag=True
         # ),
