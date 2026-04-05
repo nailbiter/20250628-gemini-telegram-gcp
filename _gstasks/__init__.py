@@ -566,6 +566,8 @@ def real_add(
     logging.warning(names)
     assert len(names) > 0
 
+    kwargs["due"] = kwargs.get("due")
+
     task_list = ctx.obj["task_list"]
     if kwargs.get("tags", []):
         _process_tag = TagProcessor(

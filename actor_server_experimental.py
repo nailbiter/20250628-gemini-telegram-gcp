@@ -18,8 +18,8 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 bot = telegram.Bot(token=TELEGRAM_TOKEN) if TELEGRAM_TOKEN else None
 
 MONGO_URL = os.environ.get("MONGO_URL")
-mongo_client = MongoClient(MONGO_URL) if MONGO_URL else None
 
+mongo_client = MongoClient(MONGO_URL) if MONGO_URL else None
 COMMANDS = {
     "/tasknew": tasknew,
     "/taskdone": taskdone,

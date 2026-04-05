@@ -215,6 +215,11 @@ async def tasknew(
 
     _GSTASKS_TAGS = {
         # (kwargs: dict, ) -> dict
+        "nextweek": lambda _: dict(
+            scheduled_date=date_to_grid(
+                datetime.now() + timedelta(days=7), grid_hours=True
+            )
+        ),
         "tomorrow": lambda _: dict(
             scheduled_date=date_to_grid(
                 datetime.now() + timedelta(days=1), grid_hours=True
@@ -236,9 +241,14 @@ async def tasknew(
     logger.debug(_GSTASKS_TAGS.keys())
 
     for k, cb in _GSTASKS_TAGS.items():
-        if content.find(f"#{k}") >= 0:
+        tag_value = f"#{k}"
+        if content.find(tag_value) >= 0:
             logging.warning((f"#{k}", content))
+            content = content.replace(tag_value, "")
             kwargs = {**kwargs, **cb(kwargs)}
+
+    content = content.strip()
+    assert len(content) > 0
 
     debug_info = real_add(
         ctx,
