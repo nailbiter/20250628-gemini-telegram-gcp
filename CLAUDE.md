@@ -8,8 +8,10 @@ Multi-service Telegram bot platform backed by Google Gemini AI, deployed on Goog
 
 ## Build and Deployment
 
+Env vars (`$GCLOUD_PROJECT`, etc.) are defined in `.envrc` (not committed). Load with direnv or `source .envrc`.
+
 ```bash
-# Build Docker image
+# Build Docker image (Docker Hub — used by main gemini-telegram-gcp service)
 make build
 
 # Push to Docker Hub
@@ -18,11 +20,23 @@ make push
 # Deploy main service to Cloud Run
 make deploy
 
-# Deploy a specialized Cloud Run service
+# Build GCR image (used by all specialized Cloud Run services)
+gcloud builds submit --tag gcr.io/$GCLOUD_PROJECT/py-assistant-bot
+
+# Deploy a specialized Cloud Run service (always rebuild GCR image first)
 ./admin-scripts/deploy-functions.py -n <service-name> -s <script>.py -C uvicorn
+
+# Example: deploy actor_server.py to time-category-server
+gcloud builds submit --tag gcr.io/$GCLOUD_PROJECT/py-assistant-bot
+./admin-scripts/deploy-functions.py -n time-category-server -s actor_server.py -C uvicorn
 
 # Example: deploy experimental actor server
 ./admin-scripts/deploy-functions.py -n time-react-service-experimental -s actor_server_experimental.py -C uvicorn
+
+# Fetch logs from a Cloud Run service
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=<service-name>" \
+  --limit=50 --format="table(timestamp,severity,textPayload,jsonPayload.message)" \
+  --project=$GCLOUD_PROJECT
 
 # Run locally for development
 uvicorn app:app --reload --host 0.0.0.0 --port 8080
@@ -51,14 +65,14 @@ Local secrets file: `.env.secrets` (not committed).
 
 ### Entry Points
 
-| File | Role |
-|---|---|
-| `time_react.py` | **Primary webhook handler** — routes callback queries (time tracking) and dispatches text messages to Cloud Run services via MongoDB prefix rules |
-| `app.py` | Gemini-Telegram bridge — receives messages, calls Gemini API, returns responses |
-| `actor_server.py` | FastAPI service handling `/money`, `/note`, `/sleepstart`, `/sleepend` |
-| `actor_server_experimental.py` | Experimental variant of actor server |
-| `heartbeat_time_main.py` | Scheduled job — sends activity category keyboards every 30 min |
-| `heartbeat_habits_main.py` | Scheduled job — checks habit cron schedules and sends reminders |
+| File | Role | Cloud Run service |
+|---|---|---|
+| `time_react.py` | **Primary webhook handler** — routes callback queries (time tracking) and dispatches text messages to Cloud Run services via MongoDB prefix rules | `time-react-service` |
+| `app.py` | Gemini-Telegram bridge — receives messages, calls Gemini API, returns responses | `gemini-telegram-gcp` |
+| `actor_server.py` | FastAPI service handling `/money`, `/note`, `/sleepstart`, `/sleepend` | `time-category-server` |
+| `actor_server_experimental.py` | Experimental variant of actor server | `time-react-service-experimental` |
+| `heartbeat_time_main.py` | Scheduled job — sends activity category keyboards every 30 min | `heartbeat-time-service` |
+| `heartbeat_habits_main.py` | Scheduled job — checks habit cron schedules and sends reminders | `heartbeat-habits-service` |
 
 ### Dispatcher Pattern (`time_react.py`)
 

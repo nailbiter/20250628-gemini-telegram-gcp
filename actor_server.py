@@ -4,7 +4,7 @@ import logging
 import telegram
 import asyncio
 from fastapi import FastAPI, Request, Response
-from _actor import add_money, add_note, sleepstart, sleepend, call_cloud_run
+from _actor import add_money, add_note, sleepstart, sleepend
 import functools
 from pymongo import MongoClient
 

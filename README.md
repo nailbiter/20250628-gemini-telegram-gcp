@@ -1,3 +1,9 @@
+## testing
+
+```
+pytest tests/ -v
+```
+
 ## deployment
 
 ## build

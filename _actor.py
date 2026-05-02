@@ -41,6 +41,10 @@ from common import date_to_grid, spl
 
 MockClickContext = collections.namedtuple("MockClickContext", "obj", defaults=[{}])
 
+CURRENCY_RATES = {
+    "rmb_to_yen": 21,
+}
+
 
 async def add_money(
     text: str, send_message_cb: typing.Callable = None, mongo_client=None
@@ -58,6 +62,9 @@ async def add_money(
             x = x[1:]
             if x in ["food", "fun"]:
                 category = x
+            elif x == "rmb":
+                tags.add(x)
+                amount *= CURRENCY_RATES["rmb_to_yen"]
             else:
                 tags.add(x)
         elif x.startswith("%"):
