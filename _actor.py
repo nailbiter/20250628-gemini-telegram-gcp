@@ -43,6 +43,7 @@ MockClickContext = collections.namedtuple("MockClickContext", "obj", defaults=[{
 
 CURRENCY_RATES = {
     "rmb_to_yen": 21,
+    "hkd_to_yen": 19,
 }
 
 
@@ -65,6 +66,9 @@ async def add_money(
             elif x == "rmb":
                 tags.add(x)
                 amount *= CURRENCY_RATES["rmb_to_yen"]
+            elif x == "hkd":
+                tags.add(x)
+                amount *= CURRENCY_RATES["hkd_to_yen"]
             else:
                 tags.add(x)
         elif x.startswith("%"):

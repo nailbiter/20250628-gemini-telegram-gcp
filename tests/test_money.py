@@ -39,3 +39,15 @@ async def test_rmb_with_math_expression():
     send, mongo, _, docs = make_mocks()
     await add_money("5+5 #food #rmb noodles", send_message_cb=send, mongo_client=mongo)
     assert docs[0]["amount"] == pytest.approx(10 * CURRENCY_RATES["rmb_to_yen"])
+
+
+async def test_hkd_converts_to_yen():
+    send, mongo, _, docs = make_mocks()
+    await add_money("10 #fun #hkd tea", send_message_cb=send, mongo_client=mongo)
+    assert docs[0]["amount"] == pytest.approx(10 * CURRENCY_RATES["hkd_to_yen"])
+
+
+async def test_hkd_stored_in_tags():
+    send, mongo, _, docs = make_mocks()
+    await add_money("10 #fun #hkd tea", send_message_cb=send, mongo_client=mongo)
+    assert "hkd" in docs[0]["tags"]
