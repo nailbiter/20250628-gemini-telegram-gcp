@@ -54,7 +54,7 @@ def simple_math_eval(
             s.pop()
             sign = -1
         value = 0
-        while s and s[-1].isdigit():
+        while s and re.match(r'^[\d.]+$', s[-1]):
             value *= 10
             value += string_to_num(s.pop())
         _logger.debug((sign, value))
